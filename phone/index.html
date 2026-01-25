@@ -165,6 +165,36 @@
       display: block;
     }
 
+    /* Connection status */
+    .connection-status {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.9);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .connection-status::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff5722;
+    }
+    .connection-status.connected::before {
+      background: #4caf50;
+    }
+    .connection-status.disconnected::before {
+      background: #ff5722;
+    }
+
     /* Confirm button */
     .confirm-button {
       position: absolute;
@@ -224,6 +254,11 @@
         </div>
       </div>
 
+      <!-- Connection status -->
+      <div id="connection-status" class="connection-status disconnected">
+        Verbinde...
+      </div>
+
       <!-- Debug info -->
       <div id="debug" class="debug-info">
         FPS: <span id="fps">0</span><br>
@@ -238,6 +273,6 @@
     </div>
   </div>
 
-  <script type="module" src="/src/phone.js"></script>
+  <script type="module" src="../src/phone.js"></script>
 </body>
 </html>

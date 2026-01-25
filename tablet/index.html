@@ -91,20 +91,20 @@
     /* Position markers at 8 locations */
     /* Top-left (ID 0) */
     .marker-0 {
-      top: 20px;
+      top: 60px;
       left: 20px;
     }
 
     /* Top-center (ID 1) */
     .marker-1 {
-      top: 20px;
+      top: 60px;
       left: 50%;
       transform: translateX(-50%);
     }
 
     /* Top-right (ID 2) */
     .marker-2 {
-      top: 20px;
+      top: 60px;
       right: 20px;
     }
 
@@ -162,6 +162,45 @@
       margin-top: 10px;
     }
 
+    /* Connection status bar */
+    .status-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      font-size: 14px;
+    }
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .connection-status::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ff5722;
+    }
+    .connection-status.connected::before {
+      background: #4caf50;
+    }
+    .connection-status.disconnected::before {
+      background: #ff5722;
+    }
+    .player-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     @media (max-width: 768px) {
       .marker img {
         width: 80px;
@@ -182,6 +221,16 @@
   </style>
 </head>
 <body>
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div id="connection-status" class="connection-status disconnected">
+      Verbinde...
+    </div>
+    <div class="player-info">
+      Kollaborateure: <span id="player-count">0</span>
+    </div>
+  </div>
+
   <div class="container">
     <div class="header">
       <h1>Tablet Marker Display</h1>
@@ -190,53 +239,53 @@
 
     <!-- Top-Left (ID 0) -->
     <div class="marker marker-0">
-      <img src="/assets/markers/AprilTag-tag36h11-ID0.png" alt="Marker 0">
+      <img src="../assets/markers/AprilTag-tag36h11-ID0.png" alt="Marker 0">
       <div class="marker-label">ID 0: Top-Left</div>
     </div>
 
     <!-- Top-Center (ID 1) -->
     <div class="marker marker-1">
-      <img src="/assets/markers/AprilTag-tag36h11-ID1.png" alt="Marker 1">
+      <img src="../assets/markers/AprilTag-tag36h11-ID1.png" alt="Marker 1">
       <div class="marker-label">ID 1: Top-Center</div>
     </div>
 
     <!-- Top-Right (ID 2) -->
     <div class="marker marker-2">
-      <img src="/assets/markers/AprilTag-tag36h11-ID2.png" alt="Marker 2">
+      <img src="../assets/markers/AprilTag-tag36h11-ID2.png" alt="Marker 2">
       <div class="marker-label">ID 2: Top-Right</div>
     </div>
 
     <!-- Right-Center (ID 3) -->
     <div class="marker marker-3">
-      <img src="/assets/markers/AprilTag-tag36h11-ID3.png" alt="Marker 3">
+      <img src="../assets/markers/AprilTag-tag36h11-ID3.png" alt="Marker 3">
       <div class="marker-label">ID 3: Right-Center</div>
     </div>
 
     <!-- Bottom-Right (ID 4) -->
     <div class="marker marker-4">
-      <img src="/assets/markers/AprilTag-tag36h11-ID4.png" alt="Marker 4">
+      <img src="../assets/markers/AprilTag-tag36h11-ID4.png" alt="Marker 4">
       <div class="marker-label">ID 4: Bottom-Right</div>
     </div>
 
     <!-- Bottom-Center (ID 5) -->
     <div class="marker marker-5">
-      <img src="/assets/markers/AprilTag-tag36h11-ID5.png" alt="Marker 5">
+      <img src="../assets/markers/AprilTag-tag36h11-ID5.png" alt="Marker 5">
       <div class="marker-label">ID 5: Bottom-Center</div>
     </div>
 
     <!-- Bottom-Left (ID 6) -->
     <div class="marker marker-6">
-      <img src="/assets/markers/AprilTag-tag36h11-ID6.png" alt="Marker 6">
+      <img src="../assets/markers/AprilTag-tag36h11-ID6.png" alt="Marker 6">
       <div class="marker-label">ID 6: Bottom-Left</div>
     </div>
 
     <!-- Left-Center (ID 7) -->
     <div class="marker marker-7">
-      <img src="/assets/markers/AprilTag-tag36h11-ID7.png" alt="Marker 7">
+      <img src="../assets/markers/AprilTag-tag36h11-ID7.png" alt="Marker 7">
       <div class="marker-label">ID 7: Left-Center</div>
     </div>
   </div>
 
-  <script type="module" src="/src/tablet.js"></script>
+  <script type="module" src="../src/tablet.js"></script>
 </body>
 </html>

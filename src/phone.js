@@ -1,7 +1,7 @@
 // Phone view - Camera and AprilTag detection using apriltag-js-standalone with Comlink
 import { MARKER_POSITIONS, POSITION_LABELS, DETECTION_CONFIG } from './marker-config.js';
 import * as Comlink from "https://unpkg.com/comlink/dist/esm/comlink.mjs";
-import Communication from './communication.js';
+import PlayroomCommunication from './playroom-communication.js';
 
 // DOM elements
 let video, canvas, ctx, overlayCanvas, overlayCtx;
@@ -24,8 +24,9 @@ let lastProcessingTime = 0;
 // Current best detection
 let currentBestMarker = null;
 
-// Communication layer
+// Communication layer (Playroom-based)
 let communication = null;
+let connectionStatusElement = null;
 
 // Initialize camera and detection
 async function init() {
@@ -51,13 +52,24 @@ async function init() {
   confirmButton = document.getElementById('confirm-button');
   confirmButton.addEventListener('click', handleConfirm);
 
+  // Get connection status element
+  connectionStatusElement = document.getElementById('connection-status');
+
   try {
     console.log('=== Starting initialization ===');
 
-    // Initialize communication
-    console.log('Step 1: Initializing communication...');
-    communication = new Communication();
-    console.log('✓ Communication initialized');
+    // Initialize Playroom communication
+    console.log('Step 1: Initializing Playroom communication...');
+    updateLoadingMessage('Connecting to room...');
+    communication = new PlayroomCommunication({ isHost: false });
+
+    // Set up connection status updates
+    communication.onConnectionChange((connected) => {
+      updateConnectionStatus(connected);
+    });
+
+    await communication.init();
+    console.log('✓ Playroom communication initialized');
 
     // Initialize AprilTag detector
     updateLoadingMessage('Loading AprilTag detector...');
@@ -99,8 +111,11 @@ async function initAprilTagDetector() {
 
   try {
     // Create Comlink-wrapped worker
+    // Use relative path from the HTML file location for GitHub Pages compatibility
     console.log('[2/3] Creating Web Worker...');
-    const worker = new Worker('/lib/apriltag.js');
+    const workerPath = new URL('../lib/apriltag.js', import.meta.url).href;
+    console.log('[Worker] Path:', workerPath);
+    const worker = new Worker(workerPath);
     const Apriltag = Comlink.wrap(worker);
 
     console.log('[3/3] Initializing detector instance...');
@@ -497,6 +512,21 @@ function showError(message) {
   loadingPanel.style.display = 'none';
   errorPanel.style.display = 'block';
   document.getElementById('error-message').textContent = message;
+}
+
+// Update connection status indicator
+function updateConnectionStatus(connected) {
+  if (!connectionStatusElement) return;
+
+  if (connected) {
+    connectionStatusElement.textContent = 'Verbunden';
+    connectionStatusElement.classList.add('connected');
+    connectionStatusElement.classList.remove('disconnected');
+  } else {
+    connectionStatusElement.textContent = 'Getrennt';
+    connectionStatusElement.classList.remove('connected');
+    connectionStatusElement.classList.add('disconnected');
+  }
 }
 
 // Handle confirm button click
