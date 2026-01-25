@@ -5,8 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   // Base path for GitHub Pages deployment
-  // Change 'PhotoCollage-Marker' to your repo name
-  base: '/PhotoCollage-Marker/',
+  base: '/nui-photocollage/',
   build: {
     outDir: 'dist',
   },
