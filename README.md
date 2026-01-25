@@ -1,11 +1,13 @@
 # PhotoCollage Marker Detection
 
-Web-App zur Erkennung von AprilTag-Markern. Ein Tablet zeigt Marker an, Phones erkennen diese und senden ihre Position zurück.
+Natural User Interface (NUI) zur gemeinsamen Gestaltung einer Fotocollage, umgesetzt als Web-App. Ermöglicht das mühelose Einbringen von Bildern auf spontane Art und Weise, um eine natürliche Kommunikationssituation unter Kollaborateuren zu erzeugen.  
+
+Zur Erkennung der Sitz-/Stehposition werden AprilTag-Marker verwendet, die von den Smartphones der Kollaborateure kurz eingefangen werden.
 
 ## Technologien
 
-- **AprilTag WASM** - Marker-Erkennung (tag36h11 Familie)
-- **Comlink** - Web Worker Kommunikation
+- **AprilTag WASM** - Marker-Erkennung (tag36h11 Familie; vorkompiliert für schnelle Markerverarbeitung)
+- **Comlink** - Web Worker Kommunikation (Kein Blockieren der UI)
 - **Playroom** - Cross-Device Kommunikation (WebSocket/WebRTC)
 
 ## Projektstruktur
