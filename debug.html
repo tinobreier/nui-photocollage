@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug - System Check</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: monospace;
+      background: #000;
+      color: #0f0;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 20px;
+      color: #0ff;
+    }
+    .check {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #333;
+      border-radius: 4px;
+    }
+    .check.pass {
+      background: #003300;
+      border-color: #0f0;
+    }
+    .check.fail {
+      background: #330000;
+      border-color: #f00;
+      color: #f00;
+    }
+    .check.pending {
+      background: #333300;
+      border-color: #ff0;
+      color: #ff0;
+    }
+    .label {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .detail {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 5px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #0f0;
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      font-family: monospace;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover {
+      background: #0ff;
+    }
+  </style>
+</head>
+<body>
+  <h1>System Diagnostics</h1>
+
+  <div id="checks"></div>
+
+  <button onclick="runCameraTest()">Test Camera Access</button>
+  <button onclick="location.reload()">Reload</button>
+
+  <script>
+    const checks = [];
+
+    function addCheck(label, status, detail = '') {
+      const div = document.createElement('div');
+      div.className = `check ${status}`;
+      div.innerHTML = `
+        <div class="label">${status === 'pass' ? '✓' : status === 'fail' ? '✗' : '⏳'} ${label}</div>
+        ${detail ? `<div class="detail">${detail}</div>` : ''}
+      `;
+      document.getElementById('checks').appendChild(div);
+    }
+
+    // Check HTTPS/localhost
+    const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    addCheck(
+      'Secure Context (HTTPS or localhost)',
+      isSecure ? 'pass' : 'fail',
+      `Protocol: ${location.protocol}, Host: ${location.hostname}`
+    );
+
+    // Check getUserMedia support
+    const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    addCheck(
+      'getUserMedia API',
+      hasGetUserMedia ? 'pass' : 'fail',
+      hasGetUserMedia ? 'Supported' : 'Not supported in this browser'
+    );
+
+    // Check Web Workers
+    const hasWorkers = typeof Worker !== 'undefined';
+    addCheck(
+      'Web Workers',
+      hasWorkers ? 'pass' : 'fail',
+      hasWorkers ? 'Supported' : 'Not supported'
+    );
+
+    // Check WASM support
+    const hasWasm = typeof WebAssembly !== 'undefined';
+    addCheck(
+      'WebAssembly',
+      hasWasm ? 'pass' : 'fail',
+      hasWasm ? 'Supported' : 'Not supported'
+    );
+
+    // Check ES6 modules
+    const hasModules = 'noModule' in HTMLScriptElement.prototype;
+    addCheck(
+      'ES6 Modules',
+      hasModules ? 'pass' : 'fail',
+      hasModules ? 'Supported' : 'Not supported'
+    );
+
+    // Browser info
+    addCheck(
+      'Browser Info',
+      'pending',
+      `UserAgent: ${navigator.userAgent}`
+    );
+
+    // Screen info
+    addCheck(
+      'Screen Info',
+      'pending',
+      `Size: ${window.screen.width}x${window.screen.height}, Device Pixel Ratio: ${window.devicePixelRatio}`
+    );
+
+    // Test camera access
+    async function runCameraTest() {
+      const button = event.target;
+      button.disabled = true;
+      button.textContent = 'Testing...';
+
+      try {
+        console.log('Requesting camera...');
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+
+        addCheck(
+          'Camera Access Test',
+          'pass',
+          `Got stream with ${stream.getVideoTracks().length} video track(s)`
+        );
+
+        // Stop stream
+        stream.getTracks().forEach(track => track.stop());
+
+        button.textContent = 'Test Passed ✓';
+        button.style.background = '#0f0';
+      } catch (error) {
+        addCheck(
+          'Camera Access Test',
+          'fail',
+          `Error: ${error.name} - ${error.message}`
+        );
+
+        button.textContent = 'Test Failed ✗';
+        button.style.background = '#f00';
+        button.style.color = '#fff';
+        button.disabled = false;
+      }
+    }
+
+    // Test Worker loading
+    async function testWorker() {
+      try {
+        const worker = new Worker('/lib/apriltag.js');
+        addCheck(
+          'AprilTag Worker Load',
+          'pending',
+          'Worker created, waiting for message...'
+        );
+
+        worker.onerror = (error) => {
+          addCheck(
+            'AprilTag Worker Load',
+            'fail',
+            `Worker error: ${error.message}`
+          );
+        };
+
+        setTimeout(() => {
+          worker.terminate();
+        }, 5000);
+      } catch (error) {
+        addCheck(
+          'AprilTag Worker Load',
+          'fail',
+          `Failed to create worker: ${error.message}`
+        );
+      }
+    }
+
+    // Run worker test
+    testWorker();
+  </script>
+</body>
+</html>

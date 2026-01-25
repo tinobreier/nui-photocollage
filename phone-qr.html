@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phone - QR Code Detection</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #000;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+    .container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .camera-container {
+      flex: 1;
+      position: relative;
+      background: #000;
+      overflow: hidden;
+    }
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    canvas {
+      display: none;
+    }
+    .status-panel {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+      padding: 30px 20px 20px;
+      color: white;
+    }
+    .status-panel.detected {
+      background: linear-gradient(to top, rgba(0,150,0,0.9), transparent);
+    }
+    .detection-status {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .marker-info {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.3);
+    }
+    .marker-id {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .marker-position {
+      font-size: 24px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="camera-container">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
+
+      <div id="status" class="status-panel">
+        <div class="detection-status">Scanning for QR codes...</div>
+        <div class="detection-details">Point camera at QR code marker</div>
+        <div id="marker-info" class="marker-info" style="display: none;">
+          <div class="marker-id">Marker: <span id="marker-id-value">-</span></div>
+          <div class="marker-position">Position: <span id="marker-position-value">-</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { MARKER_POSITIONS, POSITION_LABELS } from './src/marker-config.js';
+
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const statusPanel = document.getElementById('status');
+    const markerInfo = document.getElementById('marker-info');
+    const markerIdValue = document.getElementById('marker-id-value');
+    const markerPositionValue = document.getElementById('marker-position-value');
+
+    let isDetecting = false;
+    let barcodeDetector = null;
+
+    // Start camera
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+
+        video.srcObject = stream;
+
+        await new Promise((resolve) => {
+          video.onloadedmetadata = () => {
+            video.play();
+            resolve();
+          };
+        });
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        console.log('Camera started:', video.videoWidth, 'x', video.videoHeight);
+
+        // Check if BarcodeDetector is available
+        if ('BarcodeDetector' in window) {
+          barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+          console.log('Using native BarcodeDetector');
+          startDetection();
+        } else {
+          // Fallback: use jsQR library
+          console.log('BarcodeDetector not available, loading jsQR...');
+          await loadJsQR();
+          startDetection();
+        }
+
+      } catch (error) {
+        console.error('Camera error:', error);
+        alert('Camera error: ' + error.message);
+      }
+    }
+
+    // Load jsQR library as fallback
+    async function loadJsQR() {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+        script.onload = () => {
+          console.log('jsQR loaded');
+          resolve();
+        };
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    // Start detection loop
+    function startDetection() {
+      isDetecting = true;
+      detectLoop();
+    }
+
+    // Main detection loop
+    async function detectLoop() {
+      if (!isDetecting) return;
+
+      try {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        let codes = [];
+
+        if (barcodeDetector) {
+          // Use native BarcodeDetector
+          codes = await barcodeDetector.detect(video);
+        } else if (window.jsQR) {
+          // Use jsQR fallback
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (code) {
+            codes = [{ rawValue: code.data }];
+          }
+        }
+
+        handleDetections(codes);
+
+      } catch (error) {
+        console.error('Detection error:', error);
+      }
+
+      requestAnimationFrame(detectLoop);
+    }
+
+    // Handle detection results
+    function handleDetections(codes) {
+      if (!codes || codes.length === 0) {
+        statusPanel.classList.remove('detected');
+        markerInfo.style.display = 'none';
+        return;
+      }
+
+      // Take the first code
+      const code = codes[0];
+      const data = code.rawValue;
+
+      // Parse marker ID from QR code data
+      // Expected format: "MARKER-0", "MARKER-1", etc.
+      const match = data.match(/MARKER-(\d+)/);
+      if (match) {
+        const markerId = parseInt(match[1]);
+
+        if (markerId >= 0 && markerId <= 7) {
+          updateUI(markerId);
+        }
+      }
+    }
+
+    // Update UI
+    function updateUI(markerId) {
+      statusPanel.classList.add('detected');
+      markerInfo.style.display = 'block';
+      markerIdValue.textContent = markerId;
+
+      const position = MARKER_POSITIONS[markerId];
+      markerPositionValue.textContent = POSITION_LABELS[position] || 'Unknown';
+    }
+
+    // Start on page load
+    startCamera();
+  </script>
+</body>
+</html>
