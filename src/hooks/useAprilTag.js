@@ -13,8 +13,9 @@ export function useAprilTag() {
       try {
         console.log('[AprilTag] Initializing detector...')
 
-        // Create worker - use import.meta.url to get correct path
-        const workerUrl = new URL('/apriltag.js', window.location.origin).href
+        // Create worker - use base path for GitHub Pages compatibility
+        const basePath = import.meta.env.BASE_URL || '/'
+        const workerUrl = new URL(basePath + 'apriltag.js', window.location.origin).href
         console.log('[AprilTag] Worker URL:', workerUrl)
 
         const worker = new Worker(workerUrl)

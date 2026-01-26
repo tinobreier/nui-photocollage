@@ -2,30 +2,52 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 
 const ROOM_CODE = "NUI-2026-PHOTOCOLLAGE"
 
-export function usePlayroom() {
-  const [isConnected, setIsConnected] = useState(false)
-  const [isHost, setIsHost] = useState(false)
-  const [playerCount, setPlayerCount] = useState(0)
-  const [error, setError] = useState(null)
+// Global singleton state for Playroom connection
+let globalState = {
+  isInitializing: false,
+  isInitialized: false,
+  isConnected: false,
+  isHost: false,
+  playerCount: 0,
+  error: null,
+  playroom: null,
+  rpc: null,
+  listeners: [],
+  stateSubscribers: new Set(), // Functions to notify when state changes
+}
 
-  const playroomRef = useRef(null)
-  const rpcRef = useRef(null)
-  const listenersRef = useRef([])
+// Notify all subscribers of state changes
+function notifySubscribers() {
+  globalState.stateSubscribers.forEach(callback => callback())
+}
+
+export function usePlayroom() {
+  const [, forceUpdate] = useState({})
+
+  // Subscribe to global state changes
+  useEffect(() => {
+    const callback = () => forceUpdate({})
+    globalState.stateSubscribers.add(callback)
+    return () => globalState.stateSubscribers.delete(callback)
+  }, [])
 
   useEffect(() => {
-    let mounted = true
+    // If already initialized, no need to do anything
+    if (globalState.isInitialized || globalState.isInitializing) {
+      console.log('[Playroom] Already initialized or initializing, skipping...')
+      return
+    }
+    globalState.isInitializing = true
 
     async function init() {
       try {
         // Dynamically import playroomkit
         const Playroom = await import('playroomkit')
 
-        if (!mounted) return
-
         const { insertCoin, onPlayerJoin, isHost: checkIsHost, onDisconnect, RPC } = Playroom
 
-        playroomRef.current = Playroom
-        rpcRef.current = RPC
+        globalState.playroom = Playroom
+        globalState.rpc = RPC
 
         console.log('[Playroom] Joining room with code:', ROOM_CODE)
 
@@ -33,20 +55,19 @@ export function usePlayroom() {
           roomCode: ROOM_CODE,
           skipLobby: true,
           maxPlayersPerRoom: 9,
-          baseUrl: window.location.origin + window.location.pathname, // new, testwise
-          shouldWriteURL: false, // new, testwise
         })
 
-        if (!mounted) return
-
-        setIsConnected(true)
-        setIsHost(checkIsHost())
+        globalState.isInitialized = true
+        globalState.isInitializing = false
+        globalState.isConnected = true
+        globalState.isHost = checkIsHost()
         console.log('[Playroom] Connected! Is host:', checkIsHost())
+        notifySubscribers()
 
         // Register RPC handler for marker confirmations
         RPC.register('marker-confirmed', (data, sender) => {
           console.log('[Playroom] RPC received marker-confirmed from:', sender.id, data)
-          listenersRef.current.forEach(cb => {
+          globalState.listeners.forEach(cb => {
             try {
               cb({
                 type: 'marker-confirmed',
@@ -67,67 +88,63 @@ export function usePlayroom() {
         onPlayerJoin((player) => {
           console.log('[Playroom] Player joined:', player.id)
           players.set(player.id, player)
-          setPlayerCount(players.size)
+          globalState.playerCount = players.size
+          notifySubscribers()
 
           player.onQuit(() => {
             console.log('[Playroom] Player left:', player.id)
             players.delete(player.id)
-            setPlayerCount(players.size)
+            globalState.playerCount = players.size
+            notifySubscribers()
           })
         })
 
         onDisconnect(() => {
           console.log('[Playroom] Disconnected from room')
-          if (mounted) {
-            setIsConnected(false)
-          }
+          globalState.isConnected = false
+          notifySubscribers()
         })
 
       } catch (err) {
+        globalState.isInitializing = false
+        globalState.error = err.message
         console.error('[Playroom] Failed to initialize:', err)
-        if (mounted) {
-          setError(err.message)
-          setIsConnected(false)
-        }
+        notifySubscribers()
       }
     }
 
     init()
-
-    return () => {
-      mounted = false
-    }
   }, [])
 
   const sendMarkerConfirmation = useCallback((markerId, position) => {
-    if (!rpcRef.current) {
+    if (!globalState.rpc) {
       console.warn('[Playroom] Not connected, cannot send marker confirmation')
       return false
     }
 
     console.log('[Playroom] Sending marker confirmation via RPC:', markerId, position)
 
-    rpcRef.current.call('marker-confirmed', {
+    globalState.rpc.call('marker-confirmed', {
       markerId,
       position,
       timestamp: Date.now()
-    }, rpcRef.current.Mode.OTHERS)
+    }, globalState.rpc.Mode.OTHERS)
 
     return true
   }, [])
 
   const onMessage = useCallback((callback) => {
-    listenersRef.current.push(callback)
+    globalState.listeners.push(callback)
     return () => {
-      listenersRef.current = listenersRef.current.filter(cb => cb !== callback)
+      globalState.listeners = globalState.listeners.filter(cb => cb !== callback)
     }
   }, [])
 
   return {
-    isConnected,
-    isHost,
-    playerCount,
-    error,
+    isConnected: globalState.isConnected,
+    isHost: globalState.isHost,
+    playerCount: globalState.playerCount,
+    error: globalState.error,
     sendMarkerConfirmation,
     onMessage,
   }

@@ -36,19 +36,35 @@ function Phone() {
       })
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
+        const video = videoRef.current
+        console.log('[Camera] Setting up video element...')
 
-        // new, testwise
-        videoRef.current.setAttribute("playsinline", true); 
-        videoRef.current.setAttribute("muted", true);
-        videoRef.current.muted = true;
+        // Required for iOS
+        video.playsInline = true
+        video.muted = true
 
-        await new Promise((resolve) => {
-          videoRef.current.onloadedmetadata = () => {
-            videoRef.current.play()
+        // Set up the promise BEFORE setting srcObject
+        const metadataPromise = new Promise((resolve) => {
+          const handler = () => {
+            console.log('[Camera] Metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight)
+            video.removeEventListener('loadedmetadata', handler)
             resolve()
           }
+          video.addEventListener('loadedmetadata', handler)
         })
+
+        // Now set the stream
+        video.srcObject = stream
+        console.log('[Camera] Stream assigned, waiting for metadata...')
+
+        // Wait for metadata
+        await metadataPromise
+
+        // Start playing
+        await video.play()
+        console.log('[Camera] Video playing, readyState:', video.readyState)
+      } else {
+        console.error('[Camera] videoRef.current is null!')
       }
 
       return true
@@ -63,16 +79,14 @@ function Phone() {
     }
   }, [])
 
-  // Convert image to grayscale
+  // Convert image to grayscale (same as working old version)
   const convertToGrayscale = useCallback((imageData) => {
-    const width = imageData.width;
-    const height = imageData.height;
     const pixels = imageData.data;
-    const grayscale = new Uint8Array(width * height);
+    const grayscale = new Uint8Array(imageData.width * imageData.height);
 
-    for (let i = 0; i < pixels.length; i += 4) {
-      // Probiere diese simple Zuweisung (oft stabiler für den Detektor):
-      grayscale[i / 4] = pixels[i]; 
+    for (let i = 0, j = 0; i < pixels.length; i += 4, j++) {
+      // Average of RGB - same as working phone.js
+      grayscale[j] = Math.round((pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3);
     }
     return grayscale;
   }, []);
@@ -151,8 +165,15 @@ function Phone() {
     const canvas = canvasRef.current
     const overlay = overlayRef.current
 
-    // if (!video || !canvas || !overlay || !video.videoWidth) return
-    if (!video || video.readyState < 4) return;
+    if (!video) {
+      console.log('[ProcessFrame] No video ref')
+      return
+    }
+    if (video.readyState < 4) {
+      // Only log occasionally to avoid spam
+      if (Math.random() < 0.01) console.log('[ProcessFrame] Video not ready, readyState:', video.readyState)
+      return
+    }
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
     const startTime = performance.now()
@@ -213,9 +234,15 @@ function Phone() {
     }
   }, [detect, convertToGrayscale, scoreMarker, drawOverlay])
 
-  // Detection loop
+  // Detection loop - only starts when camera is ready (isLoading === false)
   useEffect(() => {
-    // Always start the loop as soon as the component mounts
+    // Don't start until loading is complete
+    if (isLoading) {
+      console.log('[DetectionLoop] Waiting for loading to complete...')
+      return
+    }
+
+    console.log('[DetectionLoop] Starting detection loop')
     let lastTime = 0
     isDetectingRef.current = true
 
@@ -232,31 +259,49 @@ function Phone() {
 
     requestAnimationFrame(loop)
 
-    return () => {isDetectingRef.current = false}
-  }, [detectorReady, isLoading])
+    return () => {
+      console.log('[DetectionLoop] Stopping detection loop')
+      isDetectingRef.current = false
+    }
+  }, [isLoading, processFrame])
 
-  // Initialize
+  // Initialize - only run once on mount, after DOM is ready
   useEffect(() => {
+    let mounted = true
+
     async function init() {
+      // Wait a tick for DOM to be ready
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      if (!mounted || !videoRef.current) {
+        console.log('[Init] Aborted - component unmounted or video not ready')
+        return
+      }
+
       try {
         console.log("Starte Initialisierung...");
         // 1. Kamera zuerst starten
         await startCamera();
+        if (!mounted) return
         console.log("Kamera bereit");
-        
+
         // 2. Kurz warten, falls Playroom/Detector noch Zeit brauchen
         setLoadingMessage('Synchronisiere...');
-        
-        setIsLoading(false); 
+
+        setIsLoading(false);
         console.log("Loading beendet");
       } catch (err) {
         console.error("Init Fehler:", err);
-        setError(err.message);
-        setIsLoading(false);
+        if (mounted) {
+          setError(err.message);
+          setIsLoading(false);
+        }
       }
     }
     init();
-  }, [startCamera]); // Entferne unnötige Abhängigkeiten, die den Loop triggern könnten
+
+    return () => { mounted = false }
+  }, []); // Empty deps - run only once on mount
 
   // Update overlay size
   useEffect(() => {
@@ -303,30 +348,26 @@ function Phone() {
     )
   }
 
-  // Show loading
-  if (isLoading) {
-    return (
-      <div className="phone-container">
-        <div className="loading-panel">
-          <div className="spinner"></div>
-          <div>{loadingMessage}</div>
-        </div>
-      </div>
-    )
-  }
-
   const position = currentMarker ? MARKER_POSITIONS[currentMarker.id] : null
   const positionLabel = position ? POSITION_LABELS[position] : null
 
   return (
     <div className="phone-container">
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="loading-panel">
+          <div className="spinner"></div>
+          <div>{loadingMessage}</div>
+        </div>
+      )}
+
       {/* Connection Status */}
       <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
         {isConnected ? 'Verbunden' : 'Getrennt'}
       </div>
 
-      {/* Camera View */}
-      <div className="camera-container">
+      {/* Camera View - always rendered so ref is available */}
+      <div className="camera-container" style={{ visibility: isLoading ? 'hidden' : 'visible' }}>
         <video ref={videoRef} playsInline muted />
         <canvas ref={canvasRef} style={{ display: 'none' }} />
         <canvas ref={overlayRef} className="overlay-canvas" />

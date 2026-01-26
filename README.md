@@ -43,18 +43,8 @@ PhotoCollage-Marker/
 | 7 | Left-Center |
 
 ## Nutzung
-
-Statischen Server lokal starten zum Testen:
-```bash
-python -m http.server 8080
-```
-
-Im Browser:
-- **Tablet:** `http://localhost:8080/tablet/`
-- **Phone:** `http://localhost:8080/phone/`
-
 Beide verbinden sich automatisch über Playroom (gleicher Room Code).
 
-## Deployment
+Lokales Testen: `npm run dev -- --host`
 
-Kompatibel mit GitHub Pages (kein Backend nötig; TBC).
+Hosting: https://tinobreier.github.io/nui-photocollage/
