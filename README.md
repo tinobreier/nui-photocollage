@@ -48,3 +48,4 @@ Beide verbinden sich automatisch über Playroom (gleicher Room Code).
 Lokales Testen: `npm run dev -- --host`
 
 Hosting: https://tinobreier.github.io/nui-photocollage/
+(Deploy via `npm run deploy`)
