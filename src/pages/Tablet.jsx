@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react'
 import { usePlayroom } from '../hooks/usePlayroom'
 import { MARKER_POSITIONS } from '../marker-config'
 
+// use gestures
+import { animated } from '@react-spring/web'
+import { useTransformGesture } from '../utils/useTransformGesture'
+import usePreventZoom from '../utils/usePreventZoom'
+
 import PhotoOverlay from '../components/PhotoOverlay'
 import './Tablet.css'
 
@@ -13,11 +18,16 @@ const markers = Object.entries(MARKER_POSITIONS).map(([id, position]) => ({
 }))
 
 function Tablet() {
+    usePreventZoom()
+
   const { isConnected, playerCount, error, onMessage } = usePlayroom()
   const [glowPosition, setGlowPosition] = useState(null)
   const [photos, setPhotos] = useState({}) 
   // { markerId: [{ id, photoBase64, timestamp, animating, x, y }] }
   const [firstConfirmedMarkerId, setFirstConfirmedMarkerId] = useState(null)
+
+  // gesture
+  const { bind, style } = useTransformGesture()
 
   useEffect(() => {
     const unsubscribe = onMessage((data) => {
@@ -90,6 +100,25 @@ function Tablet() {
           Kollaborateure: <span>{collaboratorCount}</span>
         </div>
       </div>
+
+      {/** Test bis ich wieder mein Handy für die Fotos benutzt habe */}
+      <animated.div
+        {...bind()}
+        style={{
+          width: 150,
+          height: 150,
+          backgroundColor: 'red',
+          touchAction: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          ...style,
+        }}
+      >
+        Hilfe Verschieb Mich
+      </animated.div>
+
 
       {/* Fotos */}
       {Object.entries(photos).map(([markerId, photoArray]) =>

@@ -16,7 +16,7 @@ function Phone() {
   const [error, setError] = useState(null)
   const [currentMarker, setCurrentMarker] = useState(null)
   const [debugInfo, setDebugInfo] = useState({ fps: 0, detections: 0, processingTime: 0 })
-  const [confirmFeedback, setConfirmFeedback] = useState(false)
+  //const [confirmFeedback, setConfirmFeedback] = useState(false)
 
   const [isCapturing, setIsCapturing] = useState(false)
 
