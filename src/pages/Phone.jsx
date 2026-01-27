@@ -9,6 +9,10 @@ import { MARKER_POSITIONS, POSITION_LABELS, DETECTION_CONFIG } from "../marker-c
 // Phone UI related
 import "./Phone.css";
 import CameraGalleryScreen from "./CameraGalleryScreen";
+import { Box, Typography, Paper, Button, Fade } from '@mui/material';
+import CenterFocusWeakIcon from '@mui/icons-material/CenterFocusWeak';
+
+const accentColor = "#4da6ff"
 
 function Phone() {
 	const { isConnected, error: connectionError, sendMarkerConfirmation } = usePlayroom();
@@ -21,6 +25,7 @@ function Phone() {
 	const [debugInfo, setDebugInfo] = useState({ fps: 0, detections: 0, processingTime: 0 });
 	const [confirmFeedback, setConfirmFeedback] = useState(false);
 	const [screen, setScreen] = useState("markerDetection"); // "scanner" | "cameraGallery"
+  const [labelPos, setLabelPos] = useState({ x: 0, y: 0 });
 
 	const videoRef = useRef(null);
 	const canvasRef = useRef(null);
@@ -100,143 +105,134 @@ function Phone() {
 
 	// Score a marker
 	const scoreMarker = useCallback((detection, canvasWidth, canvasHeight) => {
-		let score = 1.0;
+    let score = 1.0;
 
-		if (detection.p && detection.p.length === 4) {
-			const c0 = detection.p[0];
-			const c2 = detection.p[2];
-			const diagonal = Math.sqrt(Math.pow(c2[0] - c0[0], 2) + Math.pow(c2[1] - c0[1], 2));
-			const normalizedSize = diagonal / Math.sqrt(canvasWidth * canvasWidth + canvasHeight * canvasHeight);
-			score *= normalizedSize * 10;
-		}
+    if (detection.corners && detection.corners.length === 4) {
+      const c0 = detection.corners[0];
+      const c2 = detection.corners[2];
+      const diagonal = Math.sqrt(Math.pow(c2.x - c0.x, 2) + Math.pow(c2.y - c0.y, 2));
+      const normalizedSize = diagonal / Math.sqrt(canvasWidth * canvasWidth + canvasHeight * canvasHeight);
+      score *= normalizedSize * 10;
+    }
+    
+    // Hamming and decision margin, if available (Fallback) (Not yet implemented)
+    if (detection.hamming !== undefined) {
+      score *= Math.max(0.1, 1.0 - detection.hamming / 10);
+    }
 
-		if (detection.hamming !== undefined) {
-			score *= Math.max(0.1, 1.0 - detection.hamming / 10);
-		}
+    return score;
+  }, []);
 
-		if (detection.decision_margin !== undefined) {
-			score *= Math.max(0.1, Math.min(2.0, detection.decision_margin / 50));
-		}
+const drawBorderAroundMarker = useCallback((detection, overlay, params) => {
+    if (!overlay) return null;
 
-		return score;
-	}, []);
+    const ctx = overlay.getContext("2d");
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-	// Draw detection overlay
-	const drawOverlay = useCallback((detection, canvas, overlay) => {
-		const ctx = overlay.getContext("2d");
-		ctx.clearRect(0, 0, overlay.width, overlay.height);
+    if (!detection || !detection.corners || !params) return;
 
-		if (!detection || !detection.p || detection.p.length !== 4) return;
+    // conversion function (scale is wrong otherwise)
+    const { scale, offsetX, offsetY, factorX, factorY } = params;
+    const mapP = (p) => ({
+      x: (p.x * factorX) * scale + offsetX,
+      y: (p.y * factorY) * scale + offsetY
+    });
 
-		const scaleX = overlay.width / canvas.width;
-		const scaleY = overlay.height / canvas.height;
+    const corners = detection.corners.map(mapP);
+    const center = mapP(detection.center);
 
-		// Draw outline
-		ctx.strokeStyle = "#ffeb3b";
-		ctx.lineWidth = 3;
-		ctx.beginPath();
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 8;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(corners[0].x, corners[0].y);
+    corners.forEach((p, i) => i > 0 && ctx.lineTo(p.x, p.y));
+    ctx.closePath();
+    ctx.stroke();
 
-		const corners = detection.p;
-		ctx.moveTo(corners[0][0] * scaleX, corners[0][1] * scaleY);
-		for (let i = 1; i < corners.length; i++) {
-			ctx.lineTo(corners[i][0] * scaleX, corners[i][1] * scaleY);
-		}
-		ctx.closePath();
-		ctx.stroke();
+    // (Optional) Small dots at the corners for debugging
+    // ctx.fillStyle = accentColor;
+    // corners.forEach(p => {
+    //   ctx.beginPath();
+    //   ctx.arc(p.x, p.y, 4, 0, Math.PI * 1);
+    //   ctx.fill();
+    // });
 
-		// Draw corner dots
-		ctx.fillStyle = "#ffeb3b";
-		for (const corner of corners) {
-			ctx.beginPath();
-			ctx.arc(corner[0] * scaleX, corner[1] * scaleY, 5, 0, Math.PI * 2);
-			ctx.fill();
-		}
+    return center;
+  }, []);
 
-		// Draw marker ID
-		if (detection.c) {
-			ctx.font = "bold 24px Arial";
-			ctx.fillStyle = "#ffeb3b";
-			ctx.textAlign = "center";
-			ctx.textBaseline = "middle";
-			ctx.fillText(`ID: ${detection.id}`, detection.c[0] * scaleX, detection.c[1] * scaleY);
-		}
-	}, []);
+  const processFrame = useCallback(async () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const overlay = overlayRef.current;
 
-	// Process frame
-	const processFrame = useCallback(async () => {
-		const video = videoRef.current;
-		const canvas = canvasRef.current;
-		const overlay = overlayRef.current;
+    if (!video || video.readyState < 4 || video.videoWidth === 0) return;
 
-		if (!video) {
-			// Only log occasionally to avoid spam during initialization
-			if (Math.random() < 0.01) console.log("[ProcessFrame] No video ref");
-			return;
-		}
-		if (video.readyState < 4) {
-			// Only log occasionally to avoid spam
-			if (Math.random() < 0.01) console.log("[ProcessFrame] Video not ready, readyState:", video.readyState);
-			return;
-		}
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    
+    // Fix dimensions BEFORE detection
+    const vW = video.videoWidth;
+    const vH = video.videoHeight;
+    const oW = overlay.width;
+    const oH = overlay.height;
 
-		const ctx = canvas.getContext("2d", { willReadFrequently: true });
-		const startTime = performance.now();
+    if (canvas.width !== DETECTION_CONFIG.CANVAS_WIDTH) {
+      const videoAspect = vW / vH;
+      canvas.width = DETECTION_CONFIG.CANVAS_WIDTH;
+      canvas.height = Math.round(DETECTION_CONFIG.CANVAS_WIDTH / videoAspect);
+    }
 
-		// Set only if the size is not yet correct to prevent possible bugs
-		if (canvas.width !== DETECTION_CONFIG.CANVAS_WIDTH) {
-			const videoAspect = video.videoWidth / video.videoHeight;
-			canvas.width = DETECTION_CONFIG.CANVAS_WIDTH;
-			canvas.height = Math.round(DETECTION_CONFIG.CANVAS_WIDTH / videoAspect);
-		}
+    // For later scaling
+    const currentCanvasWidth = canvas.width;
+    const currentCanvasHeight = canvas.height;
 
-		// Draw video to canvas
-		ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, currentCanvasWidth, currentCanvasHeight);
+    const imageData = ctx.getImageData(0, 0, currentCanvasWidth, currentCanvasHeight);
+    const grayscale = convertToGrayscale(imageData);
+    
+    // Start detection
+    const detections = await detect(grayscale, currentCanvasWidth, currentCanvasHeight);
+    
+    const validDetections = (detections || []).filter((d) => d.id >= 0 && d.id <= 7);
 
-		// Get grayscale data
-		const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-		const grayscale = convertToGrayscale(imageData);
+    if (validDetections.length > 0) {
+      const scored = validDetections.map((d) => ({
+        ...d,
+        score: scoreMarker(d, currentCanvasWidth, currentCanvasHeight),
+      }));
+      
+      scored.sort((a, b) => b.score - a.score);
+      const best = scored[0];
 
-		// Detect markers
-		const detections = await detect(grayscale, canvas.width, canvas.height);
+      // Calculate scaling parameters precisely for THIS frame
+      const scale = Math.max(oW / vW, oH / vH);
+      const scaleParams = {
+        scale,
+        offsetX: (oW - vW * scale) / 2,
+        offsetY: (oH - vH * scale) / 2,
+        factorX: vW / currentCanvasWidth,
+        factorY: vH / currentCanvasHeight
+      };
 
-		const processingTime = performance.now() - startTime;
+      setCurrentMarker(best);
+      const centerPos = drawBorderAroundMarker(best, overlay, scaleParams);
+      if (centerPos) setLabelPos(centerPos);
+    } else {
+      setCurrentMarker(null);
+      if (overlay) {
+        overlay.getContext("2d").clearRect(0, 0, overlay.width, overlay.height);
+      }
+    }
 
-		// Filter valid markers (ID 0-7)
-		const validDetections = (detections || []).filter((d) => d.id >= 0 && d.id <= 7);
-
-		if (validDetections.length > 0) {
-			console.log(`Marker detected, ID: ${validDetections[0].id} (count: ${validDetections.length})`);
-
-			// Score and select best
-			const scored = validDetections.map((d) => ({
-				...d,
-				score: scoreMarker(d, canvas.width, canvas.height),
-			}));
-			scored.sort((a, b) => b.score - a.score);
-			const best = scored[0];
-
-			setCurrentMarker(best);
-			drawOverlay(best, canvas, overlay);
-		} else {
-			setCurrentMarker(null);
-			const ctx = overlay.getContext("2d");
-			ctx.clearRect(0, 0, overlay.width, overlay.height);
-		}
-
-		// Update FPS
-		frameCountRef.current++;
-		const now = performance.now();
-		if (now - lastFpsUpdateRef.current >= 1000) {
-			setDebugInfo((prev) => ({
-				...prev,
-				fps: frameCountRef.current,
-				detections: validDetections.length,
-				processingTime: Math.round(processingTime),
-			}));
-			frameCountRef.current = 0;
-			lastFpsUpdateRef.current = now;
-		}
-	}, [detect, convertToGrayscale, scoreMarker, drawOverlay]);
+    // FPS counter logic
+    frameCountRef.current++;
+    const now = performance.now();
+    if (now - lastFpsUpdateRef.current >= 1000) {
+      setDebugInfo(prev => ({ ...prev, fps: frameCountRef.current, detections: validDetections.length }));
+      frameCountRef.current = 0;
+      lastFpsUpdateRef.current = now;
+    }
+  }, [detect, convertToGrayscale, scoreMarker, drawBorderAroundMarker]);
 
 	// Detection loop; only starts when camera is ready (isLoading === false)
 	useEffect(() => {
@@ -325,6 +321,8 @@ function Phone() {
 			const rect = video.getBoundingClientRect();
 			overlay.width = rect.width;
 			overlay.height = rect.height;
+
+      console.log("Overlay resized to:", overlay.width, "x", overlay.height);
 		};
 
 		window.addEventListener("resize", updateOverlaySize);
@@ -365,64 +363,121 @@ function Phone() {
 	const positionLabel = position ? POSITION_LABELS[position] : null;
 
 	return (
-		<div className='phone-container'>
-			{screen === "markerDetection" && (
-				<>
-					{/* Loading Overlay */}
-					{isLoading && (
-						<div className='loading-panel'>
-							<div className='spinner'></div>
-							<div>{loadingMessage}</div>
-						</div>
-					)}
+  <div className='phone-container' style={{ position: 'relative', backgroundColor: '#000', overflow: 'hidden' }}>
+    {screen === "markerDetection" && (
+      <>
+        {/* TOP OVERLAY: Scan Message & Status */}
+        <div style={{ 
+            position: 'absolute', top: '20px', width: '100%', 
+            display: 'flex', justifyContent: 'center', zIndex: 100, pointerEvents: 'none' 
+        }}>
+          <span style={{ 
+              backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '8px 16px', 
+              borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', backdropFilter: 'blur(4px)' 
+          }}>
+            Scan marker at your position
+          </span>
+          
+          <div style={{ position: 'absolute', right: '20px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ 
+                width: '8px', height: '8px', borderRadius: '50%', 
+                backgroundColor: isConnected ? '#4caf50' : '#f44336',
+                boxShadow: isConnected ? '0 0 8px #4caf50' : 'none' 
+            }} />
+            <span style={{ color: 'white', fontSize: '0.7rem', opacity: 0.8, fontWeight: 'bold' }}>
+                {isConnected ? "CONNECTED" : "DISCONNECTED"}
+            </span>
+          </div>
+        </div>
 
-					{/* Connection Status */}
-					<div className={`connection-status ${isConnected ? "connected" : "disconnected"}`}>{isConnected ? "Connected" : "Disconnected"}</div>
+        {/* CAMERA VIEW */}
+        <div className='camera-container' style={{ visibility: isLoading ? "hidden" : "visible" }}>
+          <video ref={videoRef} playsInline muted style={{ width: '100vw', height: '100vh', objectFit: 'cover' }} />
+          <canvas ref={canvasRef} style={{ display: "none" }} />
+          <canvas ref={overlayRef} className='overlay-canvas' style={{ position: 'absolute', top: 0, left: 0 }} />
+        </div>
 
-					{/* Camera View - always rendered so ref is available */}
-					<div className='camera-container' style={{ visibility: isLoading ? "hidden" : "visible" }}>
-						<video ref={videoRef} playsInline muted />
-						<canvas ref={canvasRef} style={{ display: "none" }} />
-						<canvas ref={overlayRef} className='overlay-canvas' />
-					</div>
+        {/* FLOATING MARKER INFO */}
+{currentMarker && (
+  <div style={{
+      position: 'absolute',
+      left: `${labelPos.x}px`,
+      top: `${labelPos.y}px`,
+      transform: 'translate(-50%, -130%)',
+      zIndex: 1000,
+      pointerEvents: 'none'
+  }}>
+    <div style={{
+        backgroundColor: 'white', 
+        padding: '12px 20px', 
+        borderRadius: '16px',
+        border: `3px solid ${accentColor}`, // Dickere Stroke für das Label
+        boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center', // Mittig zentriert
+        justifyContent: 'center',
+        minWidth: '120px',
+        textAlign: 'center'
+    }}>
+      {/* Position jetzt oben und präsenter */}
+      <div style={{ 
+          color: '#000', 
+          fontSize: '1.2rem', 
+          fontWeight: 'bold',
+          lineHeight: '1.1' 
+      }}>
+        {positionLabel}
+      </div>
+      
+      {/* ID jetzt darunter und klein */}
+      <div style={{ 
+          color: '#999', 
+          fontSize: '0.7rem', 
+          marginTop: '4px' 
+      }}>
+        ID: {currentMarker.id}
+      </div>
 
-					{/* Status Panel */}
-					<div className={`status-panel ${currentMarker ? "detected" : ""}`}>
-						{currentMarker ? (
-							<div className='marker-info'>
-								<div className='marker-id'>
-									<span className='label'>Marker ID:</span>
-									<span className='value'>{currentMarker.id}</span>
-								</div>
-								<div className='marker-position'>
-									<span className='label'>Position:</span>
-									<span className='value'>{positionLabel}</span>
-								</div>
-							</div>
-						) : (
-							<div className='scanning-message'>Scanning for markers...</div>
-						)}
-					</div>
+      {/* Pfeil nach unten */}
+      <div style={{
+          position: 'absolute', bottom: '-12px', left: '50%', transform: 'translateX(-50%)',
+          width: 0, height: 0, 
+          borderLeft: '12px solid transparent',
+          borderRight: '12px solid transparent', 
+          borderTop: `12px solid ${accentColor}`
+      }} />
+    </div>
+  </div>
+)}
 
-					{/* Confirm Button */}
-					{currentMarker && (
-						<button className={`confirm-button ${confirmFeedback ? "confirmed" : ""}`} onClick={handleConfirm}>
-							{confirmFeedback ? "✓ Confirmed" : "Confirm"}
-						</button>
-					)}
-
-					{/* Debug Panel */}
-					<div className='debug-panel'>
-						<span>FPS: {debugInfo.fps}</span>
-						<span>Detected: {debugInfo.detections}</span>
-						<span>{debugInfo.processingTime}ms</span>
-					</div>
-				</>
-			)}
-
-			{screen === "cameraGallery" && <CameraGalleryScreen />}
-		</div>
-	);
+{/* CONFIRM BUTTON */}
+{currentMarker && (
+  <button 
+    className={`confirm-button ${confirmFeedback ? "confirmed" : ""}`} 
+    onClick={handleConfirm}
+    style={{
+        position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
+        backgroundColor: accentColor, 
+        color: 'white', 
+        padding: '16px 48px',
+        borderRadius: '40px', 
+        border: 'none', 
+        fontWeight: 'bold', 
+        fontSize: '1.1rem',
+        boxShadow: 'none', // Glow/Schatten entfernt
+        zIndex: 100,
+        transition: 'transform 0.1s active'
+    }}
+  >
+    {confirmFeedback ? "✓ Confirmed" : "Confirm Position"}
+  </button>
+)}
+      </>
+    )}
+    {screen === "cameraGallery" && <CameraGalleryScreen />}
+  </div>
+);
 }
 
 export default Phone;

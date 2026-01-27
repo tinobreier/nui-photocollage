@@ -1,3 +1,7 @@
+* {
+  font-family: 'Fira Sans', sans-serif;
+}
+
 .tablet-container {
   width: 100vw;
   height: 100vh;
