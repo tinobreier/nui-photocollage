@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Box, ToggleButton, ToggleButtonGroup, IconButton, Typography } from "@mui/material";
+import { Box, ToggleButton, ToggleButtonGroup, IconButton, Typography, darken } from "@mui/material";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
+import CameraAltIconEnhanced from '@mui/icons-material/CameraEnhance';
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 
 // Shutter sound as base64 data URI (short click sound)
@@ -24,6 +25,8 @@ export default function CameraGalleryScreen() {
 	const shutterAudioRef = useRef(null);
 	const pinchRef = useRef({ initialDistance: 0, initialZoom: 1 });
 	const handleRef = useRef(null);
+
+  const accentColor = "#4da6ff"
 
 	/* ---------------- Audio Setup ---------------- */
 
@@ -201,7 +204,7 @@ export default function CameraGalleryScreen() {
 				// Use the file input with capture attribute to access gallery
 				if (fileInputRef.current && images.length === 0) {
 					// Automatically trigger file picker for gallery access
-					// Note: This requires user interaction, so we'll show a prompt
+					// Note: This requires user interaction, so show a prompt
 				}
 			} catch (err) {
 				console.log("Could not access device gallery:", err);
@@ -303,7 +306,7 @@ export default function CameraGalleryScreen() {
 								},
 							}}
 						>
-							<CameraAltIcon sx={{ fontSize: 36 }} />
+							<CameraAltIconEnhanced sx={{ fontSize: 36 }} />
 						</IconButton>
 
 						<canvas ref={canvasRef} style={{ display: "none" }} />
@@ -324,7 +327,7 @@ export default function CameraGalleryScreen() {
 									background: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 50%, #111 100%)",
 								}}
 							>
-								<Typography color='white'>Swipe photo here for transmission</Typography>
+								<Typography color='white' textAlign="center">Swipe your photo upwards <br/> to send it to the tablet</Typography>
 							</Box>
 						)}
 
@@ -342,7 +345,7 @@ export default function CameraGalleryScreen() {
 								{selectedImage ? (
 									<img src={selectedImage.src} alt='' style={{ maxWidth: "100%", maxHeight: "100%" }} />
 								) : (
-									<Typography color='gray'>Select a photo</Typography>
+									<Typography color='gray'>Select a photo for preview</Typography>
 								)}
 							</Box>
 						)}
@@ -480,30 +483,40 @@ export default function CameraGalleryScreen() {
 				}}
 			>
 				<ToggleButtonGroup
-					value={mode}
-					exclusive
-					onChange={handleModeChange}
-					fullWidth
-					sx={{
-						bgcolor: "#222",
-						borderRadius: 2,
-						"& .MuiToggleButton-root": {
-							color: "white",
-							border: "1px solid #444",
-						},
-						"& .Mui-selected": {
-							bgcolor: "#4da6ff",
-							color: "white",
-							fontWeight: 600,
-							"&:hover": {
-								bgcolor: "#3d9aff",
-							},
-						},
-					}}
-				>
-					<ToggleButton value='camera'>Camera</ToggleButton>
-					<ToggleButton value='gallery'>Gallery</ToggleButton>
-				</ToggleButtonGroup>
+    value={mode}
+    exclusive
+    onChange={handleModeChange}
+    fullWidth
+    sx={{
+        bgcolor: "#222", 
+        borderRadius: "50px", // Outer frame as a pill
+        // padding: "2px",       // Creates the spacing for the "inlay" effect (optional, can be removed later if we want)
+        border: "1px solid #444", 
+        "& .MuiToggleButtonGroup-grouped": {
+            // Forces rounding on both sides for each button
+            borderRadius: "50px !important", 
+            border: "none !important",
+        },
+        "& .MuiToggleButton-root": {
+            color: "white",
+            // textTransform: "none", // Prevents automatic capitalization
+            "&:not(:first-of-type)": {
+                marginLeft: 0, // Prevents MUI standard margin correction
+            },
+        },
+        "& .MuiToggleButton-root.Mui-selected": {
+            bgcolor: accentColor,
+            color: "white",
+            fontWeight: 600,
+            "&.MuiToggleButton-root.Mui-selected:hover": {
+                bgcolor: darken(accentColor, 0.2)
+            },
+        },
+    }}
+>
+    <ToggleButton value='camera'>Camera</ToggleButton>
+    <ToggleButton value='gallery'>Gallery</ToggleButton>
+</ToggleButtonGroup>
 			</Box>
 		</Box>
 	);
