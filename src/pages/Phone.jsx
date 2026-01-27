@@ -2,10 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePlayroom } from '../hooks/usePlayroom'
 import { useAprilTag } from '../hooks/useAprilTag'
 import { MARKER_POSITIONS, POSITION_LABELS, DETECTION_CONFIG } from '../marker-config'
+
+import { capturePhotoFromVideo, blobToBase64 } from '../utils/photoUtils'
+
 import './Phone.css'
 
 function Phone() {
-  const { isConnected, error: connectionError, sendMarkerConfirmation } = usePlayroom()
+  const { isConnected, error: connectionError, sendMarkerConfirmation, sendPhoto } = usePlayroom()
   const { isReady: detectorReady, error: detectorError, detect } = useAprilTag()
 
   const [isLoading, setIsLoading] = useState(true)
@@ -14,6 +17,13 @@ function Phone() {
   const [currentMarker, setCurrentMarker] = useState(null)
   const [debugInfo, setDebugInfo] = useState({ fps: 0, detections: 0, processingTime: 0 })
   const [confirmFeedback, setConfirmFeedback] = useState(false)
+
+  const [isCapturing, setIsCapturing] = useState(false)
+
+  // Bestätigter Marker-Status
+  const [confirmedMarker, setConfirmedMarker] = useState(null)
+  const [photoCount, setPhotoCount] = useState(0)
+  const [photoFeedback, setPhotoFeedback] = useState(false)
 
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -128,9 +138,12 @@ function Phone() {
     const scaleX = overlay.width / canvas.width
     const scaleY = overlay.height / canvas.height
 
+    // Grüne Farbe für bestätigten Marker, gelb für detektierten
+    const color = confirmedMarker ? '#4caf50' : '#ffeb3b'
+
     // Draw outline
-    ctx.strokeStyle = '#ffeb3b'
-    ctx.lineWidth = 3
+    ctx.strokeStyle = color
+    ctx.lineWidth = confirmedMarker ? 4 : 3
     ctx.beginPath()
 
     const corners = detection.p
@@ -142,22 +155,22 @@ function Phone() {
     ctx.stroke()
 
     // Draw corner dots
-    ctx.fillStyle = '#ffeb3b'
+    ctx.fillStyle = color
     for (const corner of corners) {
       ctx.beginPath()
-      ctx.arc(corner[0] * scaleX, corner[1] * scaleY, 5, 0, Math.PI * 2)
+      ctx.arc(corner[0] * scaleX, corner[1] * scaleY, confirmedMarker ? 6 : 5, 0, Math.PI * 2)
       ctx.fill()
     }
 
     // Draw marker ID
     if (detection.c) {
-      ctx.font = 'bold 24px Arial'
-      ctx.fillStyle = '#ffeb3b'
+      ctx.font = confirmedMarker ? 'bold 28px Arial' : 'bold 24px Arial'
+      ctx.fillStyle = color
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillText(`ID: ${detection.id}`, detection.c[0] * scaleX, detection.c[1] * scaleY)
     }
-  }, [])
+  }, [confirmedMarker])
 
   // Process frame
   const processFrame = useCallback(async () => {
@@ -200,23 +213,35 @@ function Phone() {
     // Filter valid markers (ID 0-7)
     const validDetections = (detections || []).filter(d => d.id >= 0 && d.id <= 7)
 
-    if (validDetections.length > 0) {
+    // Wenn ein Marker bestätigt wurde, zeige nur noch diesen an
+    if (confirmedMarker) {
+      const confirmedDetection = validDetections.find(d => d.id === confirmedMarker.id)
+      if (confirmedDetection) {
+        drawOverlay(confirmedDetection, canvas, overlay)
+      } else {
+        // Marker nicht mehr sichtbar - zeige letzte Position
+        drawOverlay(confirmedMarker, canvas, overlay)
+      }
+    } else {
+      // Normaler Scan-Modus
+      if (validDetections.length > 0) {
       console.log(`Marker erkannt, ID: ${validDetections[0].id} (Anzahl: ${validDetections.length})`);
 
       // Score and select best
-      const scored = validDetections.map(d => ({
-        ...d,
-        score: scoreMarker(d, canvas.width, canvas.height)
-      }))
-      scored.sort((a, b) => b.score - a.score)
-      const best = scored[0]
+        const scored = validDetections.map(d => ({
+          ...d,
+          score: scoreMarker(d, canvas.width, canvas.height)
+        }))
+        scored.sort((a, b) => b.score - a.score)
+        const best = scored[0]
 
-      setCurrentMarker(best)
-      drawOverlay(best, canvas, overlay)
-    } else {
-      setCurrentMarker(null)
-      const ctx = overlay.getContext('2d')
-      ctx.clearRect(0, 0, overlay.width, overlay.height)
+        setCurrentMarker(best)
+        drawOverlay(best, canvas, overlay)
+      } else {
+        setCurrentMarker(null)
+        const ctx = overlay.getContext('2d')
+        ctx.clearRect(0, 0, overlay.width, overlay.height)
+      }
     }
 
     // Update FPS
@@ -232,7 +257,7 @@ function Phone() {
       frameCountRef.current = 0
       lastFpsUpdateRef.current = now
     }
-  }, [detect, convertToGrayscale, scoreMarker, drawOverlay])
+  }, [detect, convertToGrayscale, scoreMarker, drawOverlay, confirmedMarker])
 
   // Detection loop - only starts when camera is ready (isLoading === false)
   useEffect(() => {
@@ -324,15 +349,82 @@ function Phone() {
     }
   }, [isLoading])
 
-  // Handle confirm
-  const handleConfirm = () => {
-    if (!currentMarker) return
+  // Marker bestätigen (einmalig)
+  const handleConfirmMarker = () => {
+    if (!currentMarker || confirmedMarker) return
 
+    console.log('[Confirm] Marker bestätigt:', currentMarker.id)
+    
+    setConfirmedMarker(currentMarker)
+    setPhotoCount(0)
+
+    // An Tablet senden
     const position = MARKER_POSITIONS[currentMarker.id]
     sendMarkerConfirmation(currentMarker.id, position)
+  }
 
-    setConfirmFeedback(true)
-    setTimeout(() => setConfirmFeedback(false), 1500)
+  // Foto machen
+  const handleTakePhoto = async () => {
+    if (!confirmedMarker || isCapturing) return
+
+    setIsCapturing(true)
+
+    try {
+      const photoBlob = await capturePhotoFromVideo(videoRef.current)
+      const photoBase64 = await blobToBase64(photoBlob)
+
+      const position = MARKER_POSITIONS[confirmedMarker.id]
+      sendPhoto(confirmedMarker.id, position, photoBase64)
+
+      setPhotoCount(prev => prev + 1)
+
+      // Feedback Animation
+      setPhotoFeedback(true)
+      setTimeout(() => setPhotoFeedback(false), 600)
+
+    } catch (err) {
+      console.error('[TakePhoto] Error:', err)
+      alert('Fehler beim Aufnehmen: ' + err.message)
+    } finally {
+      setIsCapturing(false)
+    }
+  }
+
+  // Foto aus Galerie wählen
+  const handlePickFromGallery = async (event) => {
+    if (!confirmedMarker) return
+    
+    const file = event.target.files[0]
+    if (!file) return
+
+    setIsCapturing(true)
+
+    try {
+      const base64 = await blobToBase64(file)
+      const position = MARKER_POSITIONS[confirmedMarker.id]
+      sendPhoto(confirmedMarker.id, position, base64)
+
+      setPhotoCount(prev => prev + 1)
+
+      // Feedback
+      setPhotoFeedback(true)
+      setTimeout(() => setPhotoFeedback(false), 600)
+
+    } catch (err) {
+      console.error('[Gallery] Error:', err)
+      alert('Fehler beim Laden: ' + err.message)
+    } finally {
+      setIsCapturing(false)
+      // Input zurücksetzen, damit das gleiche Bild nochmal gewählt werden kann
+      event.target.value = ''
+    }
+  }
+
+  // Neuen Marker scannen (Reset)
+  const handleResetMarker = () => {
+    setConfirmedMarker(null)
+    setPhotoCount(0)
+    setCurrentMarker(null)
   }
 
   // Show error
@@ -348,7 +440,9 @@ function Phone() {
     )
   }
 
-  const position = currentMarker ? MARKER_POSITIONS[currentMarker.id] : null
+  const position = confirmedMarker 
+    ? MARKER_POSITIONS[confirmedMarker.id] 
+    : (currentMarker ? MARKER_POSITIONS[currentMarker.id] : null)
   const positionLabel = position ? POSITION_LABELS[position] : null
 
   return (
@@ -366,6 +460,34 @@ function Phone() {
         {isConnected ? 'Verbunden' : 'Getrennt'}
       </div>
 
+      {/* Foto Feedback */}
+      {photoFeedback && (
+        <div className="photo-flash">
+          ✓ Foto gesendet!
+        </div>
+      )}
+
+      {/* Confirmed Marker Status */}
+      {confirmedMarker && (
+        <div className="confirmed-marker-status">
+          <div className="confirmed-title">✓ Bestätigter Marker</div>
+          <div className="confirmed-row">
+            <span className="label">ID:</span>
+            <span className="value">{confirmedMarker.id}</span>
+          </div>
+          <div className="confirmed-row">
+            <span className="label">Position:</span>
+            <span className="value">
+              {POSITION_LABELS[MARKER_POSITIONS[confirmedMarker.id]]}
+            </span>
+          </div>
+          <div className="confirmed-row">
+            <span className="label">Fotos:</span>
+            <span className="value">{photoCount}</span>
+          </div>
+        </div>
+      )}
+
       {/* Camera View - always rendered so ref is available */}
       <div className="camera-container" style={{ visibility: isLoading ? 'hidden' : 'visible' }}>
         <video ref={videoRef} playsInline muted />
@@ -374,8 +496,13 @@ function Phone() {
       </div>
 
       {/* Status Panel */}
-      <div className={`status-panel ${currentMarker ? 'detected' : ''}`}>
-        {currentMarker ? (
+      <div className={`status-panel ${currentMarker || confirmedMarker ? 'detected' : ''}`}>
+        {confirmedMarker ? (
+          <div className="marker-info confirmed">
+            <div className="status-icon">✓</div>
+            <div>Bereit für Fotos</div>
+          </div>
+        ) : currentMarker ? (
           <div className="marker-info">
             <div className="marker-id">
               <span className="label">Marker ID:</span>
@@ -392,13 +519,42 @@ function Phone() {
       </div>
 
       {/* Confirm Button */}
-      {currentMarker && (
-        <button
-          className={`confirm-button ${confirmFeedback ? 'confirmed' : ''}`}
-          onClick={handleConfirm}
+      {!confirmedMarker && currentMarker && (
+        <button 
+          className="confirm-button"
+          onClick={handleConfirmMarker}
         >
-          {confirmFeedback ? '✓ Bestätigt' : 'Bestätigen'}
+          📍 Marker bestätigen
         </button>
+      )}
+
+
+      {confirmedMarker && (
+        <div className="photo-actions">
+          <button 
+            className="action-button photo-button"
+            onClick={handleTakePhoto}
+            disabled={isCapturing}>
+            {isCapturing ? '⏳' : '📸'} Foto machen
+          </button>
+
+          <label className="action-button gallery-button">
+            🖼️ Galerie
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handlePickFromGallery}
+              disabled={isCapturing}
+            />
+          </label>
+
+          <button 
+            className="action-button reset-button"
+            onClick={handleResetMarker}>
+            🔄 Neuer Marker
+          </button>
+        </div>
       )}
 
       {/* Debug Panel */}

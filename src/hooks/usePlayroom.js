@@ -82,6 +82,26 @@ export function usePlayroom() {
           return 'ok'
         })
 
+        // Register RPC handler for photo uploads
+        RPC.register('photo-upload', (data, sender) => {
+          console.log('[Playroom] RPC received photo-upload from:', sender.id, 'marker:', data.markerId)
+          globalState.listeners.forEach(cb => {
+            try {
+              cb({
+                type: 'photo-upload',
+                markerId: data.markerId,
+                position: data.position,
+                photoBase64: data.photoBase64,
+                playerId: sender.id,
+                timestamp: data.timestamp
+              })
+            } catch (err) {
+              console.error('[Playroom] Error in listener:', err)
+            }
+          })
+          return 'ok'
+        })
+
         // Track players
         let players = new Map()
 
@@ -133,6 +153,25 @@ export function usePlayroom() {
     return true
   }, [])
 
+  // Versenden des Fotos vom Handy
+  const sendPhoto = useCallback((markerId, position, photoBase64) => {
+    if (!globalState.rpc) {
+      console.warn('[Playroom] Not connected, cannot send photo')
+      return false
+    }
+
+    console.log('[Playroom] Sending photo via RPC:', markerId, position, 'size:', Math.round(photoBase64.length / 1024), 'KB')
+
+    globalState.rpc.call('photo-upload', {
+      markerId,
+      position,
+      photoBase64,
+      timestamp: Date.now()
+    }, globalState.rpc.Mode.OTHERS)
+
+    return true
+  }, [])
+
   const onMessage = useCallback((callback) => {
     globalState.listeners.push(callback)
     return () => {
@@ -146,6 +185,7 @@ export function usePlayroom() {
     playerCount: globalState.playerCount,
     error: globalState.error,
     sendMarkerConfirmation,
+    sendPhoto,
     onMessage,
   }
 }
