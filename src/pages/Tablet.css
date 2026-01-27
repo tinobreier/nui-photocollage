@@ -1,3 +1,7 @@
+body {
+  touch-action: none;
+}
+
 .tablet-container {
   width: 100vw;
   height: 100vh;
