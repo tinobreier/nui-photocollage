@@ -169,7 +169,8 @@ function Phone() {
 		const overlay = overlayRef.current;
 
 		if (!video) {
-			console.log("[ProcessFrame] No video ref");
+			// Only log occasionally to avoid spam during initialization
+			if (Math.random() < 0.01) console.log("[ProcessFrame] No video ref");
 			return;
 		}
 		if (video.readyState < 4) {
@@ -272,13 +273,20 @@ function Phone() {
 		let mounted = true;
 
 		async function init() {
-			// Wait a tick for DOM to be ready
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			// Wait for video element to be available in DOM
+			// This is more robust than a single setTimeout, especially on GitHub Pages
+			let attempts = 0;
+			const maxAttempts = 50; // 5 seconds max
+			while (!videoRef.current && attempts < maxAttempts) {
+				await new Promise((resolve) => setTimeout(resolve, 100));
+				attempts++;
+			}
 
 			if (!mounted || !videoRef.current) {
-				console.log("[Init] Aborted - component unmounted or video not ready");
+				console.log("[Init] Aborted - component unmounted or video not ready after", attempts, "attempts");
 				return;
 			}
+			console.log("[Init] Video element ready after", attempts, "attempts");
 
 			try {
 				console.log("Starting initialization...");
