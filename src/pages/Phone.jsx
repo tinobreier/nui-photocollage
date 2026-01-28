@@ -14,8 +14,20 @@ import CenterFocusWeakIcon from "@mui/icons-material/CenterFocusWeak";
 
 const accentColor = "#4da6ff";
 
+const reservedColor = "#ff4444"; // Red for reserved markers
+
 function Phone() {
-	const { isConnected, error: connectionError, sendMarkerConfirmation, cancelMarker } = usePlayroom();
+	const {
+		isConnected,
+		error: connectionError,
+		sendMarkerConfirmation,
+		cancelMarker,
+		reserveMarker,
+		releaseMarker,
+		releaseAllMyMarkers,
+		isMarkerAvailable,
+		reservedMarkers,
+	} = usePlayroom();
 	const { isReady: detectorReady, error: detectorError, detect } = useAprilTag();
 
 	const [isLoading, setIsLoading] = useState(true);
@@ -126,7 +138,7 @@ function Phone() {
 		return score;
 	}, []);
 
-	const drawBorderAroundMarker = useCallback((detection, overlay, params) => {
+	const drawBorderAroundMarker = useCallback((detection, overlay, params, isReservedByOther = false) => {
 		if (!overlay) return null;
 
 		const ctx = overlay.getContext("2d");
@@ -144,7 +156,10 @@ function Phone() {
 		const corners = detection.corners.map(mapP);
 		const center = mapP(detection.center);
 
-		ctx.strokeStyle = accentColor;
+		// Use red color if marker is reserved by someone else
+		const borderColor = isReservedByOther ? reservedColor : accentColor;
+
+		ctx.strokeStyle = borderColor;
 		ctx.lineWidth = 6;
 		ctx.lineJoin = "round";
 		ctx.beginPath();
@@ -153,17 +168,17 @@ function Phone() {
 		ctx.closePath();
 		ctx.stroke();
 
-		// ===> Animation Start
-		// optional for later
-		// ===> Animation End
-
-		// (Optional) Small dots at the corners for debugging
-		// ctx.fillStyle = accentColor;
-		// corners.forEach(p => {
-		//   ctx.beginPath();
-		//   ctx.arc(p.x, p.y, 4, 0, Math.PI * 1);
-		//   ctx.fill();
-		// });
+		// Draw X overlay if reserved by someone else
+		if (isReservedByOther) {
+			ctx.strokeStyle = reservedColor;
+			ctx.lineWidth = 4;
+			ctx.beginPath();
+			ctx.moveTo(corners[0].x, corners[0].y);
+			ctx.lineTo(corners[2].x, corners[2].y);
+			ctx.moveTo(corners[1].x, corners[1].y);
+			ctx.lineTo(corners[3].x, corners[3].y);
+			ctx.stroke();
+		}
 
 		return center;
 	}, []);
@@ -250,8 +265,17 @@ function Phone() {
 			//   );
 			// }
 
-			setCurrentMarker(best);
-			const centerPos = drawBorderAroundMarker(best, overlay, scaleParams);
+			// Check if this marker is reserved by someone else
+			const isReservedByOther = !isMarkerAvailable(best.id);
+
+			// Log when scanning a reserved marker (only once per marker change)
+			if (isReservedByOther && (!currentMarker || currentMarker.id !== best.id)) {
+				const position = MARKER_POSITIONS[best.id];
+				console.log(`[Phone] Scanning reserved marker: "${POSITION_LABELS[position]}" (ID ${best.id}) - already taken`);
+			}
+
+			setCurrentMarker({ ...best, isReservedByOther });
+			const centerPos = drawBorderAroundMarker(best, overlay, scaleParams, isReservedByOther);
 			if (centerPos) setLabelPos(centerPos);
 		} else {
 			setCurrentMarker(null);
@@ -304,13 +328,21 @@ function Phone() {
 	useEffect(() => {
 		const handleVisibilityChange = () => {
 			if (document.hidden) {
-				// User has switched tabs or locked their phone
+				// User has switched tabs or locked their phone - release marker reservation
+				releaseAllMyMarkers();
 				cancelMarker();
 			} else {
 				// When the user comes back and we still have their marker
-				if (currentMarker) {
-					const position = MARKER_POSITIONS[currentMarker.id];
-					sendMarkerConfirmation(currentMarker.id, position);
+				if (currentMarker && screen === "cameraGallery") {
+					// Try to re-reserve the marker
+					const success = reserveMarker(currentMarker.id);
+					if (success) {
+						const position = MARKER_POSITIONS[currentMarker.id];
+						sendMarkerConfirmation(currentMarker.id, position);
+					} else {
+						// Someone took our spot while we were away - go back to scanner
+						setScreen("markerDetection");
+					}
 				}
 			}
 		};
@@ -319,7 +351,7 @@ function Phone() {
 		return () => {
 			document.removeEventListener("visibilitychange", handleVisibilityChange);
 		};
-	}, [cancelMarker, sendMarkerConfirmation, currentMarker]);
+	}, [cancelMarker, sendMarkerConfirmation, currentMarker, screen, releaseAllMyMarkers, reserveMarker]);
 
 	// Initialize; only run once on mount, after DOM is ready
 	useEffect(() => {
@@ -390,11 +422,31 @@ function Phone() {
 		};
 	}, [isLoading, screen]);
 
-	// Handle confirm
-	const handleConfirm = () => {
-		if (!currentMarker) return;
+	// Handle confirm (async to wait for RPC response)
+	const handleConfirm = async () => {
+		console.log("[Phone] handleConfirm() called, currentMarker:", currentMarker);
+
+		if (!currentMarker) {
+			console.log("[Phone] handleConfirm() - No marker detected, aborting");
+			return;
+		}
+
+		console.log("[Phone] Attempting to reserve marker", currentMarker.id);
+
+		// Try to reserve the marker first (now async - waits for other clients to respond)
+		const success = await reserveMarker(currentMarker.id);
+		console.log("[Phone] reserveMarker() returned:", success);
+
+		if (!success) {
+			// Marker is already taken - show feedback
+			const position = MARKER_POSITIONS[currentMarker.id];
+			console.log(`[Phone] BLOCKED: Position "${POSITION_LABELS[position]}" (Marker ${currentMarker.id}) is already taken by another player`);
+			setCurrentMarker((prev) => (prev ? { ...prev, isReservedByOther: true } : null));
+			return;
+		}
 
 		const position = MARKER_POSITIONS[currentMarker.id];
+		console.log(`[Phone] SUCCESS: Reserved position "${POSITION_LABELS[position]}" (Marker ${currentMarker.id})`);
 		sendMarkerConfirmation(currentMarker.id, position);
 
 		setConfirmFeedback(true);
@@ -417,8 +469,12 @@ function Phone() {
 
 	const position = currentMarker ? MARKER_POSITIONS[currentMarker.id] : null;
 	const positionLabel = position ? POSITION_LABELS[position] : null;
+	const isCurrentMarkerReserved = currentMarker?.isReservedByOther || false;
 
 	const handleGoBack = () => {
+		// Release our reserved marker
+		releaseAllMyMarkers();
+
 		// Tell the tablet that we are leaving our position
 		cancelMarker();
 
@@ -519,10 +575,10 @@ function Phone() {
 						>
 							<div
 								style={{
-									backgroundColor: "white",
+									backgroundColor: isCurrentMarkerReserved ? "#fff0f0" : "white",
 									padding: "12px 20px",
 									borderRadius: "16px",
-									border: `3px solid ${accentColor}`, 
+									border: `3px solid ${isCurrentMarkerReserved ? reservedColor : accentColor}`,
 									boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
 									display: "flex",
 									flexDirection: "column",
@@ -532,10 +588,25 @@ function Phone() {
 									textAlign: "center",
 								}}
 							>
+								{/* Reserved indicator */}
+								{isCurrentMarkerReserved && (
+									<div
+										style={{
+											color: reservedColor,
+											fontSize: "0.75rem",
+											fontWeight: "bold",
+											marginBottom: "4px",
+											textTransform: "uppercase",
+										}}
+									>
+										Already taken
+									</div>
+								)}
+
 								{/* Position label */}
 								<div
 									style={{
-										color: "#000",
+										color: isCurrentMarkerReserved ? "#999" : "#000",
 										fontSize: "1.2rem",
 										fontWeight: "bold",
 										lineHeight: "1.1",
@@ -566,15 +637,15 @@ function Phone() {
 										height: 0,
 										borderLeft: "12px solid transparent",
 										borderRight: "12px solid transparent",
-										borderTop: `12px solid ${accentColor}`,
+										borderTop: `12px solid ${isCurrentMarkerReserved ? reservedColor : accentColor}`,
 									}}
 								/>
 							</div>
 						</div>
 					)}
 
-					{/* CONFIRM BUTTON */}
-					{currentMarker && (
+					{/* CONFIRM BUTTON - only show if marker is available */}
+					{currentMarker && !isCurrentMarkerReserved && (
 						<button
 							className={`confirm-button ${confirmFeedback ? "confirmed" : ""}`}
 							onClick={handleConfirm}
@@ -590,12 +661,12 @@ function Phone() {
 								border: "none",
 								fontWeight: "bold",
 								fontSize: "1.1rem",
-								boxShadow: "none", // (Optional) Glow removed
+								boxShadow: "none",
 								zIndex: 100,
-								transition: "transform 0.1s active",
+								cursor: "pointer",
 							}}
 						>
-							{confirmFeedback ? "✓ Confirmed" : "Confirm Position"}
+							{confirmFeedback ? "Confirmed" : "Confirm Position"}
 						</button>
 					)}
 				</>

@@ -66,6 +66,17 @@ function Tablet() {
 				});
 			}
 
+			// Handle marker reservation events
+			if (data.type === "marker-reserved") {
+				const posLabel = MARKER_POSITIONS[data.markerId];
+				console.log(`[Tablet] >>> MARKER RESERVED: Position "${posLabel}" (ID ${data.markerId}) by player ${data.playerId}`);
+			}
+
+			if (data.type === "marker-released") {
+				const posLabel = MARKER_POSITIONS[data.markerId];
+				console.log(`[Tablet] >>> MARKER RELEASED: Position "${posLabel}" (ID ${data.markerId}) by player ${data.playerId}`);
+			}
+
 			if (data.type === "player-left") {
 				setDots((prev) => {
 					if (!prev[data.playerId]) return prev;
@@ -78,12 +89,14 @@ function Tablet() {
 					};
 				});
 
-				// Delete from state
-        setDots((prev) => {
-          const { [data.playerId]: _, ...rest } = prev;
-          return rest;
-        });
-      }
+				// Delete from state after animation
+				setTimeout(() => {
+					setDots((prev) => {
+						const { [data.playerId]: _, ...rest } = prev;
+						return rest;
+					});
+				}, 600);
+			}
 		});
 
 		return () => {
