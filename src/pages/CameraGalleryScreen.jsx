@@ -1,13 +1,17 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Box, ToggleButton, ToggleButtonGroup, IconButton, Typography, darken } from "@mui/material";
+import { Box, ToggleButton, ToggleButtonGroup, IconButton, Typography, darken, Button } from "@mui/material";
+
+// Used Icons
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
-import CameraAltIconEnhanced from '@mui/icons-material/CameraEnhance';
+import CameraAltIconEnhanced from "@mui/icons-material/CameraEnhance";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 
 // Shutter sound as base64 data URI (short click sound)
-const SHUTTER_SOUND_DATA = "data:audio/wav;base64,UklGRl4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToFAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
+const SHUTTER_SOUND_DATA =
+	"data:audio/wav;base64,UklGRl4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToFAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
 
-export default function CameraGalleryScreen() {
+export default function CameraGalleryScreen({ onGoBack }) {
 	const [mode, setMode] = useState("camera");
 	const [images, setImages] = useState([]);
 	const [selectedImage, setSelectedImage] = useState(null);
@@ -26,7 +30,7 @@ export default function CameraGalleryScreen() {
 	const pinchRef = useRef({ initialDistance: 0, initialZoom: 1 });
 	const handleRef = useRef(null);
 
-  const accentColor = "#4da6ff"
+	const accentColor = "#4da6ff";
 
 	/* ---------------- Audio Setup ---------------- */
 
@@ -41,14 +45,32 @@ export default function CameraGalleryScreen() {
 		if (mode !== "camera") return;
 
 		let stream;
+		const startCamera = async () => {
+			try {
+				stream = await navigator.mediaDevices.getUserMedia({
+					video: { facingMode: "environment" },
+				});
+				if (videoRef.current) {
+					videoRef.current.srcObject = stream;
+				}
+			} catch (err) {
+				console.error("Kamera-Fehler:", err);
+			}
+		};
 
-		navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then((s) => {
-			stream = s;
-			if (videoRef.current) videoRef.current.srcObject = stream;
-		});
+		startCamera();
 
 		return () => {
-			if (stream) stream.getTracks().forEach((t) => t.stop());
+			if (stream) {
+				stream.getTracks().forEach((t) => {
+					t.stop();
+					console.log("[CameraGallery] Stream stopped for Re-Scan");
+				});
+			}
+			// Important: Delete reference
+			if (videoRef.current) {
+				videoRef.current.srcObject = null;
+			}
 		};
 	}, [mode]);
 
@@ -68,7 +90,7 @@ export default function CameraGalleryScreen() {
 				pinchRef.current.initialZoom = zoom;
 			}
 		},
-		[zoom, getDistance]
+		[zoom, getDistance],
 	);
 
 	const handleTouchMove = useCallback(
@@ -81,7 +103,7 @@ export default function CameraGalleryScreen() {
 				setZoom(newZoom);
 			}
 		},
-		[getDistance]
+		[getDistance],
 	);
 
 	const handleTouchEnd = useCallback(() => {
@@ -171,11 +193,14 @@ export default function CameraGalleryScreen() {
 		setHandleDragCurrentY(touch.clientY);
 	}, []);
 
-	const onHandleTouchMove = useCallback((e) => {
-		if (!isDraggingHandle) return;
-		const touch = e.touches[0];
-		setHandleDragCurrentY(touch.clientY);
-	}, [isDraggingHandle]);
+	const onHandleTouchMove = useCallback(
+		(e) => {
+			if (!isDraggingHandle) return;
+			const touch = e.touches[0];
+			setHandleDragCurrentY(touch.clientY);
+		},
+		[isDraggingHandle],
+	);
 
 	const onHandleTouchEnd = useCallback(() => {
 		if (!isDraggingHandle) return;
@@ -228,6 +253,29 @@ export default function CameraGalleryScreen() {
 		<Box sx={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 			{/* MAIN CONTENT */}
 			<Box sx={{ flex: 1, position: "relative", overflow: "hidden" }}>
+				{/* Re-Scan Pill Button */}
+				{mode === "camera" && (
+					<Button
+						variant='contained'
+						startIcon={<QrCodeScannerIcon />}
+						onClick={onGoBack}
+						sx={{
+							position: "absolute",
+							top: 16,
+							left: 16,
+							zIndex: 10,
+							borderRadius: "50px",
+							bgcolor: "rgba(0,0,0,0.5)",
+							color: "white",
+							textTransform: "none", // (optional)
+							px: 2,
+							backdropFilter: "blur(6px)",
+						}}
+					>
+						Reposition
+					</Button>
+				)}
+
 				{mode === "camera" && (
 					<Box
 						ref={containerRef}
@@ -327,7 +375,9 @@ export default function CameraGalleryScreen() {
 									background: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 50%, #111 100%)",
 								}}
 							>
-								<Typography color='white' textAlign="center">Swipe your photo upwards <br/> to send it to the tablet</Typography>
+								<Typography color='white' textAlign='center'>
+									Swipe your photo upwards <br /> to send it to the tablet
+								</Typography>
 							</Box>
 						)}
 
@@ -461,14 +511,7 @@ export default function CameraGalleryScreen() {
 							</Box>
 
 							{/* Hidden file input for device gallery access */}
-							<input
-								ref={fileInputRef}
-								type="file"
-								accept="image/*"
-								multiple
-								onChange={loadGalleryImages}
-								style={{ display: "none" }}
-							/>
+							<input ref={fileInputRef} type='file' accept='image/*' multiple onChange={loadGalleryImages} style={{ display: "none" }} />
 						</Box>
 					</Box>
 				)}
@@ -483,40 +526,40 @@ export default function CameraGalleryScreen() {
 				}}
 			>
 				<ToggleButtonGroup
-    value={mode}
-    exclusive
-    onChange={handleModeChange}
-    fullWidth
-    sx={{
-        bgcolor: "#222", 
-        borderRadius: "50px", // Outer frame as a pill
-        // padding: "2px",       // Creates the spacing for the "inlay" effect (optional, can be removed later if we want)
-        border: "1px solid #444", 
-        "& .MuiToggleButtonGroup-grouped": {
-            // Forces rounding on both sides for each button
-            borderRadius: "50px !important", 
-            border: "none !important",
-        },
-        "& .MuiToggleButton-root": {
-            color: "white",
-            // textTransform: "none", // Prevents automatic capitalization
-            "&:not(:first-of-type)": {
-                marginLeft: 0, // Prevents MUI standard margin correction
-            },
-        },
-        "& .MuiToggleButton-root.Mui-selected": {
-            bgcolor: accentColor,
-            color: "white",
-            fontWeight: 600,
-            "&.MuiToggleButton-root.Mui-selected:hover": {
-                bgcolor: darken(accentColor, 0.2)
-            },
-        },
-    }}
->
-    <ToggleButton value='camera'>Camera</ToggleButton>
-    <ToggleButton value='gallery'>Gallery</ToggleButton>
-</ToggleButtonGroup>
+					value={mode}
+					exclusive
+					onChange={handleModeChange}
+					fullWidth
+					sx={{
+						bgcolor: "#222",
+						borderRadius: "50px", // Outer frame as a pill
+						// padding: "2px",       // Creates the spacing for the "inlay" effect (optional, can be removed later if we want)
+						border: "1px solid #444",
+						"& .MuiToggleButtonGroup-grouped": {
+							// Forces rounding on both sides for each button
+							borderRadius: "50px !important",
+							border: "none !important",
+						},
+						"& .MuiToggleButton-root": {
+							color: "white",
+							// textTransform: "none", // Prevents automatic capitalization
+							"&:not(:first-of-type)": {
+								marginLeft: 0, // Prevents MUI standard margin correction
+							},
+						},
+						"& .MuiToggleButton-root.Mui-selected": {
+							bgcolor: accentColor,
+							color: "white",
+							fontWeight: 600,
+							"&.MuiToggleButton-root.Mui-selected:hover": {
+								bgcolor: darken(accentColor, 0.2),
+							},
+						},
+					}}
+				>
+					<ToggleButton value='camera'>Camera</ToggleButton>
+					<ToggleButton value='gallery'>Gallery</ToggleButton>
+				</ToggleButtonGroup>
 			</Box>
 		</Box>
 	);

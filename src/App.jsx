@@ -26,7 +26,7 @@ const App = () => {
       {/* Header Area */}
       <Box sx={{ pt: 4, pb: 2, textAlign: 'center', zIndex: 10 }}>
         <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.5px' }}>
-          Collaborative Photo Collage
+          Make a photo collage together
         </Typography>
         <Typography variant="body2" sx={{ opacity: 0.5, mt: 1, textTransform: 'uppercase', letterSpacing: '1px' }}>
           Choose your role / device
