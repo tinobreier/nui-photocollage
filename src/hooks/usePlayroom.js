@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 const ROOM_CODE = "NUI-2026-PHOTOCOLLAGE"
 
-// Global singleton state for Playroom connection
 let globalState = {
   isInitializing: false,
   isInitialized: false,
@@ -13,10 +12,11 @@ let globalState = {
   playroom: null,
   rpc: null,
   listeners: [],
-  stateSubscribers: new Set(), // Functions to notify when state changes
+  stateSubscribers: new Set(),
+  reservedMarkers: {},
+  myPlayerId: null,
 }
 
-// Notify all subscribers of state changes
 function notifySubscribers() {
   globalState.stateSubscribers.forEach(callback => callback())
 }
@@ -24,7 +24,6 @@ function notifySubscribers() {
 export function usePlayroom() {
   const [, forceUpdate] = useState({})
 
-  // Subscribe to global state changes
   useEffect(() => {
     const callback = () => forceUpdate({})
     globalState.stateSubscribers.add(callback)
@@ -32,24 +31,18 @@ export function usePlayroom() {
   }, [])
 
   useEffect(() => {
-    // If already initialized, no need to do anything
-    if (globalState.isInitialized || globalState.isInitializing) {
-      console.log('[Playroom] Already initialized or initializing, skipping...')
-      return
-    }
+    if (globalState.isInitialized || globalState.isInitializing) return;
     globalState.isInitializing = true
 
     async function init() {
       try {
-        // Dynamically import playroomkit
         const Playroom = await import('playroomkit')
-
         const { insertCoin, onPlayerJoin, isHost: checkIsHost, onDisconnect, RPC } = Playroom
 
         globalState.playroom = Playroom
         globalState.rpc = RPC
 
-        console.log('[Playroom] Joining room with code:', ROOM_CODE)
+        console.log('[Playroom] Initializing with code:', ROOM_CODE);
 
         await insertCoin({
           roomCode: ROOM_CODE,
@@ -61,74 +54,209 @@ export function usePlayroom() {
         globalState.isInitializing = false
         globalState.isConnected = true
         globalState.isHost = checkIsHost()
-        console.log('[Playroom] Connected! Is host:', checkIsHost())
+        globalState.myPlayerId = Playroom.myPlayer()?.id || null
+        console.log('[Playroom] Connected. Host:', globalState.isHost, 'MyId:', globalState.myPlayerId);
         notifySubscribers()
 
-        // Register RPC handler for marker confirmations
+        // Request sync from others immediately after connecting
+        console.log('[Playroom] >>> Requesting reservation sync from others (on connect)...');
+        setTimeout(() => {
+          RPC.call('sync-reservations-request', {}, RPC.Mode.OTHERS)
+        }, 300)
+
         RPC.register('marker-confirmed', (data, sender) => {
-          console.log('[Playroom] RPC received marker-confirmed from:', sender.id, data)
+          // Edge Case: Ignore own RPC calls (sender is undefined when we are the sender)
+          if (!sender?.id) return 'ok'
+
+          console.log('[Playroom] RPC received: marker-confirmed from', sender.id, data);
           globalState.listeners.forEach(cb => {
-            try {
+            cb({
+              type: 'marker-confirmed',
+              markerId: data.markerId,
+              position: data.position,
+              playerId: sender.id
+            })
+          })
+          return 'ok'
+        })
+
+        RPC.register('marker-cancelled', (data, sender) => {
+          // Edge Case: Ignore own RPC calls (sender is undefined when we are the sender)
+          if (!sender?.id) return 'ok'
+
+          console.log('[Playroom] RPC received: marker-cancelled from', sender.id);
+
+          // Release the marker reservation
+          const markerIdToRelease = Object.entries(globalState.reservedMarkers)
+            .find(([_, playerId]) => playerId === sender.id)?.[0]
+          if (markerIdToRelease !== undefined) {
+            delete globalState.reservedMarkers[markerIdToRelease]
+            console.log('[Playroom] Released marker', markerIdToRelease, 'from player', sender.id);
+            notifySubscribers()
+          }
+
+          globalState.listeners.forEach(cb => {
+            cb({ type: 'marker-cancelled', playerId: sender.id })
+          })
+          return 'ok'
+        })
+
+        // New RPC: marker-reserved - when a player reserves a marker
+        RPC.register('marker-reserved', (data, sender) => {
+          console.log('[Playroom] >>> RPC marker-reserved received! sender:', sender, 'data:', data);
+
+          if (!sender?.id) {
+            console.log('[Playroom] >>> Ignoring own RPC call (no sender.id)');
+            return 'ok'
+          }
+
+          console.log('[Playroom] >>> Processing marker-reserved from', sender.id, 'for marker', data.markerId);
+          console.log('[Playroom] >>> Current reservedMarkers before:', JSON.stringify(globalState.reservedMarkers));
+
+          // Check if marker is already reserved by someone else
+          const existingOwner = globalState.reservedMarkers[data.markerId]
+          if (existingOwner && existingOwner !== sender.id) {
+            console.log('[Playroom] >>> CONFLICT: Marker', data.markerId, 'already reserved by', existingOwner);
+            return 'already-reserved'
+          }
+
+          // Reserve the marker
+          globalState.reservedMarkers[data.markerId] = sender.id
+          console.log('[Playroom] >>> SUCCESS: Marker', data.markerId, 'now reserved by', sender.id);
+          console.log('[Playroom] >>> Current reservedMarkers after:', JSON.stringify(globalState.reservedMarkers));
+          notifySubscribers()
+
+          globalState.listeners.forEach(cb => {
+            cb({
+              type: 'marker-reserved',
+              markerId: data.markerId,
+              playerId: sender.id
+            })
+          })
+          return 'ok'
+        })
+
+        // marker-released = when a player explicitly releases a marker
+        RPC.register('marker-released', (data, sender) => {
+          console.log('[Playroom] >>> RPC marker-released received! sender:', sender, 'data:', data);
+
+          if (!sender?.id) {
+            console.log('[Playroom] >>> Ignoring own RPC call (no sender.id)');
+            return 'ok'
+          }
+
+          console.log('[Playroom] >>> Processing marker-released from', sender.id, 'for marker', data.markerId);
+          console.log('[Playroom] >>> Current reservedMarkers before:', JSON.stringify(globalState.reservedMarkers));
+
+          // Only release if the sender owns this marker
+          if (globalState.reservedMarkers[data.markerId] === sender.id) {
+            delete globalState.reservedMarkers[data.markerId]
+            console.log('[Playroom] >>> SUCCESS: Marker', data.markerId, 'released by', sender.id);
+            console.log('[Playroom] >>> Current reservedMarkers after:', JSON.stringify(globalState.reservedMarkers));
+            notifySubscribers()
+
+            globalState.listeners.forEach(cb => {
               cb({
-                type: 'marker-confirmed',
+                type: 'marker-released',
                 markerId: data.markerId,
-                position: data.position,
                 playerId: sender.id
               })
-            } catch (err) {
-              console.error('[Playroom] Error in listener:', err)
-            }
-          })
+            })
+          } else {
+            console.log('[Playroom] >>> SKIP: Marker', data.markerId, 'not owned by', sender.id, '(owner:', globalState.reservedMarkers[data.markerId], ')');
+          }
           return 'ok'
         })
 
-        // Register RPC handler for photo uploads
-        RPC.register('photo-upload', (data, sender) => {
-          console.log('[Playroom] RPC received photo-upload from:', sender.id, 'marker:', data.markerId)
+        // RPC for syncing reservations to new players
+        RPC.register('sync-reservations-request', (data, sender) => {
+          if (!sender?.id) return 'ok'
+          console.log('[Playroom] >>> Received sync-reservations-request from', sender.id);
+          console.log('[Playroom] >>> Sending current reservations:', JSON.stringify(globalState.reservedMarkers));
+
+          // Send our current reservations back to the requester
+          RPC.call('sync-reservations-response', {
+            reservedMarkers: globalState.reservedMarkers
+          }, RPC.Mode.OTHERS)
+
+          return 'ok'
+        })
+
+        RPC.register('sync-reservations-response', (data, sender) => {
+          if (!sender?.id) return 'ok'
+          console.log('[Playroom] >>> Received sync-reservations-response from', sender.id, 'data:', data);
+
+          // Merge received reservations into our state (don't overwrite our own)
+          if (data.reservedMarkers) {
+            Object.entries(data.reservedMarkers).forEach(([markerId, playerId]) => {
+              // Only add if we don't already have this marker reserved by someone
+              if (!globalState.reservedMarkers[markerId]) {
+                globalState.reservedMarkers[markerId] = playerId
+                console.log('[Playroom] >>> Synced reservation: Marker', markerId, 'owned by', playerId);
+              }
+            })
+            console.log('[Playroom] >>> Reservations after sync:', JSON.stringify(globalState.reservedMarkers));
+            notifySubscribers()
+          }
+          return 'ok'
+        })
+
+        // RPC for sending images from phone to tablet
+        RPC.register("image-sent", (data, sender) => {
+          if (!sender?.id) return "ok"
+          
           globalState.listeners.forEach(cb => {
-            try {
-              cb({
-                type: 'photo-upload',
-                markerId: data.markerId,
-                position: data.position,
-                photoBase64: data.photoBase64,
-                playerId: sender.id,
-                timestamp: data.timestamp
-              })
-            } catch (err) {
-              console.error('[Playroom] Error in listener:', err)
-            }
+            cb({
+              type: "image-sent",
+              imageData: data.imageData,
+              position: data.position,
+              playerId: sender.id,
+              timestamp: data.timestamp
+            })
           })
-          return 'ok'
+          return "ok"
         })
 
-        // Track players
         let players = new Map()
 
         onPlayerJoin((player) => {
-          console.log('[Playroom] Player joined:', player.id)
+          console.log('[Playroom] Player joined:', player.id);
           players.set(player.id, player)
           globalState.playerCount = players.size
           notifySubscribers()
 
           player.onQuit(() => {
-            console.log('[Playroom] Player left:', player.id)
+            console.log('[Playroom] Player left:', player.id);
             players.delete(player.id)
             globalState.playerCount = players.size
+
+            // Release any markers reserved by this player
+            const markersToRelease = Object.entries(globalState.reservedMarkers)
+              .filter(([_, playerId]) => playerId === player.id)
+              .map(([markerId]) => markerId)
+
+            markersToRelease.forEach(markerId => {
+              delete globalState.reservedMarkers[markerId]
+              console.log('[Playroom] Auto-released marker', markerId, 'from disconnected player', player.id);
+            })
+
+            globalState.listeners.forEach(cb => {
+              cb({ type: 'player-left', playerId: player.id })
+            })
             notifySubscribers()
           })
         })
 
         onDisconnect(() => {
-          console.log('[Playroom] Disconnected from room')
+          console.log('[Playroom] Disconnected');
           globalState.isConnected = false
           notifySubscribers()
         })
 
       } catch (err) {
+        console.error('[Playroom] Init Error:', err);
         globalState.isInitializing = false
         globalState.error = err.message
-        console.error('[Playroom] Failed to initialize:', err)
         notifySubscribers()
       }
     }
@@ -137,39 +265,146 @@ export function usePlayroom() {
   }, [])
 
   const sendMarkerConfirmation = useCallback((markerId, position) => {
-    if (!globalState.rpc) {
-      console.warn('[Playroom] Not connected, cannot send marker confirmation')
-      return false
-    }
-
-    console.log('[Playroom] Sending marker confirmation via RPC:', markerId, position)
+    if (!globalState.rpc) return false
+    console.log('[Playroom] Sending marker-confirmed:', markerId, position);
 
     globalState.rpc.call('marker-confirmed', {
       markerId,
       position,
       timestamp: Date.now()
-    }, globalState.rpc.Mode.OTHERS)
+    }, 
+      globalState.rpc.Mode.OTHERS
+    )
 
     return true
   }, [])
 
-  // Versenden des Fotos vom Handy
-  const sendPhoto = useCallback((markerId, position, photoBase64) => {
+  const cancelMarker = useCallback(() => {
+    if (!globalState.rpc) return
+    console.log('[Playroom] Sending marker-cancelled');
+    globalState.rpc.call('marker-cancelled', {}, globalState.rpc.Mode.OTHERS)
+  }, [])
+
+  // Reserve a marker - returns a Promise that resolves to true if successful, false if already taken
+  const reserveMarker = useCallback(async (markerId) => {
+    console.log('[Playroom] reserveMarker() called with markerId:', markerId);
+    console.log('[Playroom] Current state - rpc:', !!globalState.rpc, 'myPlayerId:', globalState.myPlayerId);
+    console.log('[Playroom] Current reservedMarkers:', JSON.stringify(globalState.reservedMarkers));
+
     if (!globalState.rpc) {
-      console.warn('[Playroom] Not connected, cannot send photo')
+      console.log('[Playroom] reserveMarker() FAILED - no RPC available');
       return false
     }
 
-    console.log('[Playroom] Sending photo via RPC:', markerId, position, 'size:', Math.round(photoBase64.length / 1024), 'KB')
+    // Check locally first if marker is already reserved
+    const existingOwner = globalState.reservedMarkers[markerId]
+    if (existingOwner && existingOwner !== globalState.myPlayerId) {
+      console.log('[Playroom] reserveMarker() FAILED - Marker', markerId, 'already reserved locally by', existingOwner);
+      return false
+    }
 
-    globalState.rpc.call('photo-upload', {
-      markerId,
-      position,
-      photoBase64,
-      timestamp: Date.now()
-    }, globalState.rpc.Mode.OTHERS)
+    // Try to reserve via RPC and wait for response
+    console.log('[Playroom] Sending marker-reserved RPC and waiting for response...');
+    try {
+      const response = await globalState.rpc.call('marker-reserved', {
+        markerId,
+        timestamp: Date.now()
+      }, globalState.rpc.Mode.OTHERS)
 
-    return true
+      console.log('[Playroom] marker-reserved RPC response:', response);
+
+      // If any client responded with 'already-reserved', the reservation failed
+      if (response === 'already-reserved') {
+        console.log('[Playroom] reserveMarker() FAILED - Another client reported marker already reserved');
+        return false
+      }
+
+      // Reserve locally only after RPC success
+      globalState.reservedMarkers[markerId] = globalState.myPlayerId
+      console.log('[Playroom] reserveMarker() SUCCESS - Reserved marker', markerId, 'for', globalState.myPlayerId);
+      console.log('[Playroom] Updated reservedMarkers:', JSON.stringify(globalState.reservedMarkers));
+      notifySubscribers()
+
+      return true
+    } catch (err) {
+      console.log('[Playroom] reserveMarker() RPC error:', err);
+      // On error, still try to reserve locally (maybe we're the only one)
+      globalState.reservedMarkers[markerId] = globalState.myPlayerId
+      notifySubscribers()
+      return true
+    }
+  }, [])
+
+  // Release a specific marker
+  const releaseMarker = useCallback((markerId) => {
+    if (!globalState.rpc) return
+
+    // Only release if we own it
+    if (globalState.reservedMarkers[markerId] === globalState.myPlayerId) {
+      delete globalState.reservedMarkers[markerId]
+      console.log('[Playroom] Releasing marker', markerId);
+      notifySubscribers()
+
+      globalState.rpc.call('marker-released', {
+        markerId
+      }, globalState.rpc.Mode.OTHERS)
+    }
+  }, [])
+
+  // Release all markers owned by this player
+  const releaseAllMyMarkers = useCallback(() => {
+    if (!globalState.rpc) return
+
+    const myMarkers = Object.entries(globalState.reservedMarkers)
+      .filter(([_, playerId]) => playerId === globalState.myPlayerId)
+      .map(([markerId]) => parseInt(markerId))
+
+    myMarkers.forEach(markerId => {
+      delete globalState.reservedMarkers[markerId]
+      globalState.rpc.call('marker-released', { markerId }, globalState.rpc.Mode.OTHERS)
+    })
+
+    if (myMarkers.length > 0) {
+      console.log('[Playroom] Released all my markers:', myMarkers);
+      notifySubscribers()
+    }
+  }, [])
+
+  // Check if a marker is reserved (and by whom)
+  const getMarkerOwner = useCallback((markerId) => {
+    return globalState.reservedMarkers[markerId] || null
+  }, [])
+
+  // Check if a marker is available
+  const isMarkerAvailable = useCallback((markerId) => {
+    const owner = globalState.reservedMarkers[markerId]
+    const available = !owner || owner === globalState.myPlayerId
+    // Only log when marker is NOT available (to avoid spam)
+    if (!available) {
+      console.log('[Playroom] isMarkerAvailable(', markerId, ') = false, owned by:', owner, ', myId:', globalState.myPlayerId);
+    }
+    return available
+  }, [])
+
+  const sendImage = useCallback((imageData, position) => {
+    if (!globalState.rpc) {
+      console.warn("cannot send image")
+      return false
+    }
+
+    try {
+      globalState.rpc.call("image-sent", {
+        imageData,
+        position,
+        timestamp: Date.now()
+      }, globalState.rpc.Mode.OTHERS)
+
+      console.log("Image sent successfully")
+      return true
+    } catch (err) {
+      console.error("Error sending image:", err)
+      return false
+    }
   }, [])
 
   const onMessage = useCallback((callback) => {
@@ -184,10 +419,17 @@ export function usePlayroom() {
     isHost: globalState.isHost,
     playerCount: globalState.playerCount,
     error: globalState.error,
+    myPlayerId: globalState.myPlayerId,
+    reservedMarkers: globalState.reservedMarkers,
     sendMarkerConfirmation,
-    sendPhoto,
+    sendImage,
+    cancelMarker,
     onMessage,
+    // Marker reservation functions
+    reserveMarker,
+    releaseMarker,
+    releaseAllMyMarkers,
+    getMarkerOwner,
+    isMarkerAvailable,
   }
 }
-
-export { ROOM_CODE }
