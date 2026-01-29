@@ -78,17 +78,11 @@ export async function convertImageToBase64(imageSrc, maxDimension = 800, targetS
           base64data = canvas.toDataURL('image/jpeg', quality);
           currentSizeKB = (base64data.length * 0.75) / 1024;
           
-          console.log('[ImageTransfer] Reducing quality:', {
-            quality: quality,
-            size: `${currentSizeKB.toFixed(2)} KB`
-          });
-          
           stepIndex++;
         }
         
         // LAST RESORT: Further reduce dimensions
         if (currentSizeKB > targetSizeKB * 1.2) {
-          console.log('[ImageTransfer] ⚠️ Still too large, reducing dimensions further...');
           
           const reductionFactor = isWide ? 0.6 : 0.7;
           canvas.width = Math.round(width * reductionFactor);
@@ -144,7 +138,6 @@ export async function convertImageToBase64(imageSrc, maxDimension = 800, targetS
         
         // HARD LIMIT CHECK
         if (currentSizeKB > 200) {
-          console.error('[ImageTransfer] ❌ Image still too large after all compression attempts!');
           reject(new Error('Image too large to send - please try a different photo'));
           return;
         }
@@ -156,7 +149,6 @@ export async function convertImageToBase64(imageSrc, maxDimension = 800, targetS
       img.src = URL.createObjectURL(blob);
     });
   } catch (err) {
-    console.error('[ImageTransfer] Error converting image:', err);
     throw err;
   }
 }
@@ -172,17 +164,14 @@ export async function convertImageToBase64(imageSrc, maxDimension = 800, targetS
  */
 export async function sendImageToTablet(sendImageFn, imageSrc, position, maxRetries = 2) {
   if (!sendImageFn) {
-    console.error('[ImageTransfer] ❌ sendImage function not provided');
     return false;
   }
 
   if (!imageSrc) {
-    console.error('[ImageTransfer] ❌ No image source provided');
     return false;
   }
 
   if (!position) {
-    console.error('[ImageTransfer] ❌ No position provided');
     return false;
   }
 
@@ -191,34 +180,24 @@ export async function sendImageToTablet(sendImageFn, imageSrc, position, maxRetr
     try {
       if (attempt > 0) {
         console.log(`[ImageTransfer] 🔄 Retry attempt ${attempt}/${maxRetries}...`);
-        // Wait a bit before retrying
+        // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, 500));
       }
       
-      console.log('[ImageTransfer] 🔄 Converting image to base64...');
-      console.log('[ImageTransfer] Image source:', imageSrc.substring(0, 50) + '...');
-      
       const base64data = await convertImageToBase64(imageSrc);
-      
-      console.log('[ImageTransfer] ✅ Conversion complete. Data length:', base64data.length);
-      console.log('[ImageTransfer] 📤 Sending image to tablet at position:', position);
       
       const success = sendImageFn(base64data, position);
       
       if (success) {
-        console.log('[ImageTransfer] ✅ Send successful!');
         return true;
       } else {
-        console.warn('[ImageTransfer] ⚠️ Send returned false');
         if (attempt === maxRetries) {
           return false;
         }
       }
     } catch (err) {
-      console.error(`[ImageTransfer] ❌ Attempt ${attempt + 1} failed:`, err);
       
       if (attempt === maxRetries) {
-        console.error('[ImageTransfer] ❌ All retry attempts exhausted');
         return false;
       }
     }
