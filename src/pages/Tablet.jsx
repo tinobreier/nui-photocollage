@@ -8,6 +8,7 @@ import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 import { animated } from '@react-spring/web'
 import { useTransformGesture } from '../utils/useTransformGesture'
 import usePreventZoom from '../utils/usePreventZoom'
+import DraggablePhoto from "../components/DraggablePhoto";
 
 import "./Tablet.css";
 
@@ -66,6 +67,8 @@ function Tablet() {
 	const [showMarkers, setShowMarkers] = useState(false);
 	const [dots, setDots] = useState({});
 	const [collageImages, setCollageImages] = useState([]);
+	const [positions, setPositions] = useState({});
+
 
 	useEffect(() => {
 		const handleResize = () => setIsLandscape(window.innerWidth > window.innerHeight);
@@ -239,6 +242,11 @@ function Tablet() {
 				const offsetTransform = `translate(${offsetX}px, ${offsetY}px) rotate(${rotation}deg)`;
 				const combinedTransform = baseTransform ? `${baseTransform} ${offsetTransform}` : offsetTransform;
 
+				/* const pos = positions[image.id] || {
+					x: window.innerWidth / 2,
+					y: window.innerHeight / 2
+				}; */
+
 				return (
 					<Box
 						key={image.id}
@@ -259,18 +267,23 @@ function Tablet() {
 							}
 						}}
 					>
-						<Box
+						<DraggablePhoto
 							component="img"
+							key={image.id}
 							src={image.src}
 							alt={`Photo from ${image.position}`}
+							//initialPos={pos}
+							style={{ transform: posConfig.transform }}
+							onUpdate={(id, newPos) => setPositions(prev => (
+								{ ...prev, [id]: { ...prev[id], ...newPos } }))}
 							sx={{
 								width: "100%",
 								height: "auto",
 								borderRadius: "4px",
 								border: "6px solid white",
 								boxSizing: "border-box"
-									}}
-								/>
+							}}
+						/>
 					</Box>
 				);
 			})}
