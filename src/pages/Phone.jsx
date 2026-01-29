@@ -21,6 +21,7 @@ function Phone() {
 		isConnected,
 		error: connectionError,
 		sendMarkerConfirmation,
+		sendImage,
 		cancelMarker,
 		reserveMarker,
 		releaseMarker,
@@ -41,6 +42,7 @@ function Phone() {
 	const [detectedMarker, setDetectedMarker] = useState(null); // For creating the state from scratch
 	const [confirmStatus, setConfirmStatus] = useState(false);
 	const [debugDisplay, setDebugDisplay] = useState("");
+	const [userPosition, setUserPosition] = useState(null); // Store the confirmed position
 
 	const videoRef = useRef(null);
 	const canvasRef = useRef(null);
@@ -339,6 +341,7 @@ function Phone() {
 					if (success) {
 						const position = MARKER_POSITIONS[currentMarker.id];
 						sendMarkerConfirmation(currentMarker.id, position);
+		setUserPosition(position); // Store the position for camera gallery
 					} else {
 						// Someone took our spot while we were away - go back to scanner
 						setScreen("markerDetection");
@@ -352,6 +355,7 @@ function Phone() {
 			document.removeEventListener("visibilitychange", handleVisibilityChange);
 		};
 	}, [cancelMarker, sendMarkerConfirmation, currentMarker, screen, releaseAllMyMarkers, reserveMarker]);
+		sendImage,
 
 	// Initialize; only run once on mount, after DOM is ready
 	useEffect(() => {
@@ -448,6 +452,7 @@ function Phone() {
 		const position = MARKER_POSITIONS[currentMarker.id];
 		console.log(`[Phone] SUCCESS: Reserved position "${POSITION_LABELS[position]}" (Marker ${currentMarker.id})`);
 		sendMarkerConfirmation(currentMarker.id, position);
+		setUserPosition(position); // Store the position for camera gallery
 
 		setConfirmFeedback(true);
 		setTimeout(() => setConfirmFeedback(false), 1500);
@@ -671,7 +676,7 @@ function Phone() {
 					)}
 				</>
 			)}
-			{screen === "cameraGallery" && <CameraGalleryScreen key='cameraGallery' onGoBack={handleGoBack} />}
+			{screen === "cameraGallery" && <CameraGalleryScreen key="cameraGallery" sendImage={sendImage} userPosition={userPosition} onGoBack={handleGoBack} />}
 		</div>
 	);
 }

@@ -38,11 +38,27 @@ const DOT_INDICATOR_CONFIG = {
 	"bottom-right": { color: "#18FFFF", bottom: -12, right: -12, transform: "none" },
 };
 
+// Position-based image placement (images appear at VIEWPORT edges, not paper edges)
+// Positioned with safe margins so images stay fully visible
+const IMAGE_POSITION_CONFIG = {
+	"top-left": { top: "10px", left: "10px" },
+	"top-center": { top: "10px", left: "50%", transform: "translateX(-50%)" },
+	"top-right": { top: "10px", right: "10px" },
+	"center-left": { top: "50%", left: "10px", transform: "translateY(-50%)" },
+	"left-center": { top: "50%", left: "10px", transform: "translateY(-50%)" },
+	"center-right": { top: "50%", right: "10px", transform: "translateY(-50%)" },
+	"right-center": { top: "50%", right: "10px", transform: "translateY(-50%)" },
+	"bottom-left": { bottom: "10px", left: "10px" },
+	"bottom-center": { bottom: "10px", left: "50%", transform: "translateX(-50%)" },
+	"bottom-right": { bottom: "10px", right: "10px" },
+};
+
 function Tablet() {
 	const { onMessage } = usePlayroom();
 	const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight);
 	const [showMarkers, setShowMarkers] = useState(false);
 	const [dots, setDots] = useState({});
+	const [collageImages, setCollageImages] = useState([]);
 
 	useEffect(() => {
 		const handleResize = () => setIsLandscape(window.innerWidth > window.innerHeight);
@@ -75,6 +91,22 @@ function Tablet() {
 			if (data.type === "marker-released") {
 				const posLabel = MARKER_POSITIONS[data.markerId];
 				console.log(`[Tablet] >>> MARKER RELEASED: Position "${posLabel}" (ID ${data.markerId}) by player ${data.playerId}`);
+			}
+
+
+			if (data.type === "image-sent") {
+				console.log("[Tablet] Image received from position:", data.position);
+				
+				// Add image to collage
+				const newImage = {
+					id: crypto.randomUUID(),
+					src: data.imageData,
+					position: data.position,
+					playerId: data.playerId,
+					timestamp: data.timestamp,
+				};
+				
+				setCollageImages(prev => [...prev, newImage]);
 			}
 
 			if (data.type === "player-left") {
@@ -171,13 +203,11 @@ function Tablet() {
 						borderRadius: "1px",
 						position: "relative",
 						overflow: "visible",
-						display: "flex",
-						justifyContent: "center",
-						alignItems: "center",
 						transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
 						pointerEvents: "auto",
 					}}
 				>
+					{/* Watermark text - low opacity */}
 					<Typography
 						sx={{ position: "absolute", bottom: 10, right: 15, opacity: 0.2, fontSize: "0.9rem", pointerEvents: "none", fontWeight: "bold" }}
 					>
@@ -185,6 +215,58 @@ function Tablet() {
 					</Typography>
 				</Paper>
 			</Box>
+
+			{/* Image Collage - positioned relative to VIEWPORT edges, not paper */}
+			{collageImages.map((image, index) => {
+				// Get base position config (now relative to viewport)
+				const posConfig = IMAGE_POSITION_CONFIG[image.position] || { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+				
+				// Add small random offset for visual variety (stacking effect)
+				const hash = image.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+				const offsetX = (hash % 30) - 15; // -15 to +15px
+				const offsetY = ((hash * 7) % 30) - 15; // -15 to +15px
+				const rotation = (hash % 20) - 10; // -10 to +10 degrees
+				
+				// Combine base transform with offsets and rotation
+				const baseTransform = posConfig.transform || "";
+				const offsetTransform = `translate(${offsetX}px, ${offsetY}px) rotate(${rotation}deg)`;
+				const combinedTransform = baseTransform ? `${baseTransform} ${offsetTransform}` : offsetTransform;
+				
+				return (
+					<Box
+						key={image.id}
+						sx={{
+							position: "fixed", // FIXED positioning relative to viewport
+							width: "140px", // Smaller images to fit in margins
+							height: "auto",
+							zIndex: 1500, // Above paper
+							...posConfig, // Apply top/left/right/bottom from position config
+							transform: combinedTransform,
+							boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
+							animation: "fadeIn 0.5s ease-in",
+							animationDelay: `${index * 0.1}s`,
+							animationFillMode: "both",
+							"@keyframes fadeIn": {
+								from: { opacity: 0, transform: `${combinedTransform} scale(0.8)` },
+								to: { opacity: 1, transform: `${combinedTransform} scale(1)` }
+							}
+						}}
+					>
+						<Box
+							component="img"
+							src={image.src}
+							alt={`Photo from ${image.position}`}
+							sx={{
+								width: "100%",
+								height: "auto",
+								borderRadius: "4px",
+								border: "6px solid white",
+								boxSizing: "border-box"
+							}}
+						/>
+					</Box>
+				);
+			})}
 
 			{/* Dot Indicators - at edges of Viewport-Box */}
 			{Object.entries(dots).map(([playerId, dot]) => {

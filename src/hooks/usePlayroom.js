@@ -201,6 +201,22 @@ export function usePlayroom() {
           return 'ok'
         })
 
+        // RPC for sending images from phone to tablet
+        RPC.register("image-sent", (data, sender) => {
+          if (!sender?.id) return "ok"
+          
+          globalState.listeners.forEach(cb => {
+            cb({
+              type: "image-sent",
+              imageData: data.imageData,
+              position: data.position,
+              playerId: sender.id,
+              timestamp: data.timestamp
+            })
+          })
+          return "ok"
+        })
+
         let players = new Map()
 
         onPlayerJoin((player) => {
@@ -370,6 +386,27 @@ export function usePlayroom() {
     return available
   }, [])
 
+  const sendImage = useCallback((imageData, position) => {
+    if (!globalState.rpc) {
+      console.warn("cannot send image")
+      return false
+    }
+
+    try {
+      globalState.rpc.call("image-sent", {
+        imageData,
+        position,
+        timestamp: Date.now()
+      }, globalState.rpc.Mode.OTHERS)
+
+      console.log("Image sent successfully")
+      return true
+    } catch (err) {
+      console.error("Error sending image:", err)
+      return false
+    }
+  }, [])
+
   const onMessage = useCallback((callback) => {
     globalState.listeners.push(callback)
     return () => {
@@ -385,6 +422,7 @@ export function usePlayroom() {
     myPlayerId: globalState.myPlayerId,
     reservedMarkers: globalState.reservedMarkers,
     sendMarkerConfirmation,
+    sendImage,
     cancelMarker,
     onMessage,
     // Marker reservation functions
