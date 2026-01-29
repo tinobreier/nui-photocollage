@@ -1,13 +1,21 @@
+// General imports
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Box, ToggleButton, ToggleButtonGroup, IconButton, Typography, darken } from "@mui/material";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import CameraAltIconEnhanced from '@mui/icons-material/CameraEnhance';
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 
-// Shutter sound as base64 data URI (short click sound)
-const SHUTTER_SOUND_DATA = "data:audio/wav;base64,UklGRl4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToFAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
+// Image transfer utilities
+import { 
+  sendImageToTablet, 
+  shouldTriggerSend,
+  getSwipeTransform 
+} from "../hooks/imageTransfer";
 
-export default function CameraGalleryScreen() {
+// Shutter sound as base64 data URI (short click sound)
+const SHUTTER_SOUND_DATA = "data:audio/wav;base64,UklGRl4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToFAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA";
+
+export default function CameraGalleryScreen({ sendImage, userPosition }) {
 	const [mode, setMode] = useState("camera");
 	const [images, setImages] = useState([]);
 	const [selectedImage, setSelectedImage] = useState(null);
@@ -17,6 +25,9 @@ export default function CameraGalleryScreen() {
 	const [isDraggingHandle, setIsDraggingHandle] = useState(false);
 	const [handleDragStartY, setHandleDragStartY] = useState(0);
 	const [handleDragCurrentY, setHandleDragCurrentY] = useState(0);
+	const [swipeStartY, setSwipeStartY] = useState(0);
+	const [swipeCurrentY, setSwipeCurrentY] = useState(0);
+	const [isSwiping, setIsSwiping] = useState(false);
 
 	const videoRef = useRef(null);
 	const canvasRef = useRef(null);
@@ -195,6 +206,64 @@ export default function CameraGalleryScreen() {
 		setHandleDragCurrentY(0);
 	}, [isDraggingHandle, handleDragStartY, handleDragCurrentY, galleryHeight]);
 
+	/* ---------------- Image Swipe to Send ---------------- */
+
+	const onImageSwipeStart = useCallback((e) => {
+		console.log('[CameraGallery] 👆 onImageSwipeStart called');
+		console.log('[CameraGallery] selectedImage:', selectedImage ? 'YES' : 'NO');
+		if (!selectedImage) return;
+		const touch = e.touches[0];
+		console.log('[CameraGallery] Touch Y:', touch.clientY);
+		setIsSwiping(true);
+		setSwipeStartY(touch.clientY);
+		setSwipeCurrentY(touch.clientY);
+	}, [selectedImage]);
+
+	const onImageSwipeMove = useCallback((e) => {
+		if (!isSwiping) return;
+		const touch = e.touches[0];
+		setSwipeCurrentY(touch.clientY);
+		// Log every 10 pixels for less spam
+		const delta = Math.abs(touch.clientY - swipeStartY);
+		if (delta % 10 < 5) {
+			console.log('[CameraGallery] 👆 Swiping... Delta:', swipeStartY - touch.clientY);
+		}
+	}, [isSwiping, swipeStartY]);
+
+	const onImageSwipeEnd = useCallback(async () => {
+		console.log('[CameraGallery] 🎯 onImageSwipeEnd called');
+		console.log('[CameraGallery] isSwiping:', isSwiping);
+		console.log('[CameraGallery] selectedImage:', selectedImage ? 'YES' : 'NO');
+		console.log('[CameraGallery] swipeStartY:', swipeStartY);
+		console.log('[CameraGallery] swipeCurrentY:', swipeCurrentY);
+		
+		if (!isSwiping || !selectedImage) {
+			console.log('[CameraGallery] ❌ Early return - not swiping or no image');
+			setIsSwiping(false);
+			return;
+		}
+
+		// Use utility function to check if swipe threshold is met
+		const shouldSend = shouldTriggerSend(swipeStartY, swipeCurrentY);
+		console.log('[CameraGallery] shouldTriggerSend:', shouldSend);
+		
+		if (shouldSend) {
+			console.log('[CameraGallery] 📤 Sending image to tablet...');
+			console.log('[CameraGallery] sendImage function:', typeof sendImage);
+			console.log('[CameraGallery] userPosition:', userPosition);
+			console.log('[CameraGallery] selectedImage.src:', selectedImage.src.substring(0, 50));
+
+			const imageSrc = selectedImage.src;
+			setSelectedImage(null);
+			
+			const success = await sendImageToTablet(sendImage, selectedImage.src, userPosition);
+		}
+
+		setIsSwiping(false);
+		setSwipeStartY(0);
+		setSwipeCurrentY(0);
+	}, [isSwiping, selectedImage, swipeStartY, swipeCurrentY, sendImage, userPosition]);
+
 	/* ---------------- Load Device Gallery Images ---------------- */
 
 	useEffect(() => {
@@ -314,7 +383,7 @@ export default function CameraGalleryScreen() {
 				)}
 
 				{mode === "gallery" && (
-					<Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+					<Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: "#111" }}>
 						{/* Top section – instruction (only when collapsed) */}
 						{galleryHeight === "collapsed" && (
 							<Box
@@ -334,16 +403,55 @@ export default function CameraGalleryScreen() {
 						{/* Middle section – detail / preview (only when collapsed) */}
 						{galleryHeight === "collapsed" && (
 							<Box
+								onTouchStart={onImageSwipeStart}
+								onTouchMove={onImageSwipeMove}
+								onTouchEnd={onImageSwipeEnd}
 								sx={{
 									height: "35%",
 									display: "flex",
 									alignItems: "center",
 									justifyContent: "center",
 									bgcolor: "#000",
+									position: "relative",
+									touchAction: "none",
+									userSelect: "none",
 								}}
 							>
 								{selectedImage ? (
-									<img src={selectedImage.src} alt='' style={{ maxWidth: "100%", maxHeight: "100%" }} />
+									<>
+										<img 
+											src={selectedImage.src} 
+											alt='' 
+											style={{ 
+												maxWidth: "100%", 
+												maxHeight: "100%",
+												...(isSwiping ? getSwipeTransform(swipeStartY, swipeCurrentY) : { transform: 'none', opacity: 1 }),
+												transition: isSwiping ? 'none' : 'transform 0.3s ease',
+											}} 
+										/>
+										
+										
+										{/* Swipe Hint */}
+										{isSwiping && shouldTriggerSend(swipeStartY, swipeCurrentY - 20) && (
+											<Box
+												sx={{
+													position: 'absolute',
+													top: '16px',
+													left: '50%',
+													transform: 'translateX(-50%)',
+													bgcolor: 'rgba(77, 166, 255, 0.9)',
+													color: 'white',
+													padding: '8px 20px',
+													borderRadius: '20px',
+													fontSize: '0.9rem',
+													fontWeight: 'bold',
+													pointerEvents: 'none',
+												}}
+											>
+												↑ Keep swiping to send
+											</Box>
+										)}
+									</>
 								) : (
 									<Typography color='gray'>Select a photo for preview</Typography>
 								)}

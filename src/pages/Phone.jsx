@@ -15,7 +15,8 @@ import CenterFocusWeakIcon from '@mui/icons-material/CenterFocusWeak';
 const accentColor = "#4da6ff"
 
 function Phone() {
-	const { isConnected, error: connectionError, sendMarkerConfirmation } = usePlayroom();
+  console.log('💥💥💥 Phone.jsx FILE LOADED 💥💥💥');
+	const { isConnected, error: connectionError, sendMarkerConfirmation, sendImage } = usePlayroom();
 	const { isReady: detectorReady, error: detectorError, detect } = useAprilTag();
 
 	const [isLoading, setIsLoading] = useState(true);
@@ -26,6 +27,7 @@ function Phone() {
 	const [confirmFeedback, setConfirmFeedback] = useState(false);
 	const [screen, setScreen] = useState("markerDetection"); // "scanner" | "cameraGallery"
   const [labelPos, setLabelPos] = useState({ x: 0, y: 0 });
+  const [userPosition, setUserPosition] = useState(null); // Store the confirmed position NEU!
 
 	const videoRef = useRef(null);
 	const canvasRef = useRef(null);
@@ -336,14 +338,19 @@ const drawBorderAroundMarker = useCallback((detection, overlay, params) => {
 
 	// Handle confirm
 	const handleConfirm = () => {
+    console.log('🔵 handleConfirm called');
 		if (!currentMarker) return;
 
 		const position = MARKER_POSITIONS[currentMarker.id];
+    console.log('🔵 Position:', position);
 		sendMarkerConfirmation(currentMarker.id, position);
+    setUserPosition(position); // Store the position for later use NEU!!
 
 		setConfirmFeedback(true);
 		setTimeout(() => setConfirmFeedback(false), 1500);
+    console.log('🔵 Switching screen to: cameraGallery');
 		setScreen("cameraGallery");
+    console.log('🔵 Screen state set!');
 	};
 
 	// Show error
@@ -364,6 +371,7 @@ const drawBorderAroundMarker = useCallback((detection, overlay, params) => {
 
 	return (
   <div className='phone-container' style={{ position: 'relative', backgroundColor: '#000', overflow: 'hidden' }}>
+    {console.log('🟢 Phone rendering, screen state:', screen)}
     {screen === "markerDetection" && (
       <>
         {/* TOP OVERLAY: Scan Message & Status */}
@@ -473,9 +481,11 @@ const drawBorderAroundMarker = useCallback((detection, overlay, params) => {
     {confirmFeedback ? "✓ Confirmed" : "Confirm Position"}
   </button>
 )}
+    
       </>
     )}
-    {screen === "cameraGallery" && <CameraGalleryScreen />}
+    {console.log('🟢 Rendering CameraGalleryScreen with:', { sendImage: typeof sendImage, userPosition })}
+    {screen === "cameraGallery" && <CameraGalleryScreen sendImage={sendImage} userPosition={userPosition} />}
   </div>
 );
 }

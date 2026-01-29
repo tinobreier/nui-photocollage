@@ -177,3 +177,99 @@
     font-size: 16px;
   }
 }
+
+/* Collage Container */
+.collage-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Collage Images */
+.collage-image {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border-radius: 8px;
+  overflow: hidden;
+  animation: imagePopIn 0.5s ease-out forwards;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collage-image img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+
+/* Position images at marker locations */
+.collage-image[data-position="top-left"] {
+  top: 120px;
+  left: 20px;
+}
+
+.collage-image[data-position="top-center"] {
+  top: 120px;
+  left: 50%;
+}
+
+.collage-image[data-position="top-right"] {
+  top: 120px;
+  right: 20px;
+}
+
+.collage-image[data-position="right-center"] {
+  top: 50%;
+  right: 20px;
+}
+
+.collage-image[data-position="bottom-right"] {
+  bottom: 20px;
+  right: 20px;
+}
+
+.collage-image[data-position="bottom-center"] {
+  bottom: 20px;
+  left: 50%;
+}
+
+.collage-image[data-position="bottom-left"] {
+  bottom: 20px;
+  left: 20px;
+}
+
+.collage-image[data-position="left-center"] {
+  top: 50%;
+  left: 20px;
+}
+
+/* Image Pop-in Animation */
+@keyframes imagePopIn {
+  0% {
+    opacity: 0;
+    scale: 0;
+  }
+  50% {
+    scale: 1.1;
+  }
+  100% {
+    scale: 1;
+    opacity: 1;
+  }
+}
+
+/* Responsive styles for collage images */
+@media (max-width: 768px) {
+  .collage-image {
+    width: 100px;
+    height: 100px;
+  }
+}

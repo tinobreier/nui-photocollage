@@ -13,6 +13,7 @@ const markers = Object.entries(MARKER_POSITIONS).map(([id, position]) => ({
 function Tablet() {
   const { isConnected, playerCount, error, onMessage } = usePlayroom()
   const [glowPosition, setGlowPosition] = useState(null)
+  const [collageImages, setCollageImages] = useState([])
 
   useEffect(() => {
     const unsubscribe = onMessage((data) => {
@@ -30,10 +31,25 @@ function Tablet() {
           setGlowPosition(null)
         }, 3000)
       }
+     if (data.type === 'image-sent') {
+        console.log('[Tablet] Image received from position:', data.position)
+        
+        // Add image to collage
+        const newImage = {
+          id: crypto.randomUUID(),
+          src: data.imageData,
+          position: data.position,
+          playerId: data.playerId,
+          timestamp: data.timestamp,
+        }
+        
+        setCollageImages(prev => [...prev, newImage])
+      }
     })
 
     return unsubscribe
   }, [onMessage])
+
 
   // Calculate collaborator count (exclude tablet itself)
   const collaboratorCount = Math.max(0, playerCount - 1)
@@ -54,6 +70,30 @@ function Tablet() {
       <div className="tablet-header">
         <h1>Tablet Marker Display</h1>
         <p>8 AprilTag markers positioned around the screen</p>
+      </div>
+
+       {/* Image Collage Center Area */}
+      <div className="collage-container">
+        {collageImages.map((image, index) => {
+          // Simple hash-based random positioning
+          const hash = image.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+          const offsetX = (hash % 80) - 40; // -40 to +40px
+          const offsetY = ((hash * 7) % 8) - 80; // -40 to +40px 
+          
+          return (
+            <div 
+              key={image.id} 
+              className="collage-image"
+              data-position={image.position}
+              style={{
+                animationDelay: `${index * 0.1}s`,
+                transform: `translate(${offsetX}px, ${offsetY}px)`,
+              }}
+            >
+              <img src={image.src} alt={`Photo from ${image.position}`} />
+            </div>
+          );
+        })}
       </div>
 
       {/* Markers */}
