@@ -242,10 +242,10 @@ function Tablet() {
 				const offsetTransform = `translate(${offsetX}px, ${offsetY}px) rotate(${rotation}deg)`;
 				const combinedTransform = baseTransform ? `${baseTransform} ${offsetTransform}` : offsetTransform;
 
-				/* const pos = positions[image.id] || {
+				const pos = positions[image.id] || {
 					x: window.innerWidth / 2,
 					y: window.innerHeight / 2
-				}; */
+				};
 
 				return (
 					<Box
@@ -269,13 +269,18 @@ function Tablet() {
 					>
 						<DraggablePhoto
 							component="img"
+							id={image.id}
 							key={image.id}
 							src={image.src}
 							alt={`Photo from ${image.position}`}
 							//initialPos={pos}
-							style={{ transform: posConfig.transform }}
-							onUpdate={(id, newPos) => setPositions(prev => (
-								{ ...prev, [id]: { ...prev[id], ...newPos } }))}
+							initialX={image.x}
+							initialY={image.y}
+							animating={image.animating}
+							style={{ /* transform: posConfig.transform,  */zIndex: 1500 }}
+							onUpdate={(id, newPos) =>
+								setPositions(prev => ({ ...prev, [id]: newPos }))
+							}
 							sx={{
 								width: "100%",
 								height: "auto",
@@ -283,6 +288,7 @@ function Tablet() {
 								border: "6px solid white",
 								boxSizing: "border-box"
 							}}
+
 						/>
 					</Box>
 				);
