@@ -45,19 +45,51 @@ const DOT_INDICATOR_CONFIG = {
 	"bottom-right": { color: "#18FFFF", bottom: -12, right: -12, transform: "none" },
 };
 
-// Position-based image placement (images appear at VIEWPORT edges, not paper edges)
-// Positioned with safe margins so images stay fully visible
+// Position-based image placement (images appear at viewport edges/corners)
+// Positioned with custom safety margins so images stay fully visible
+const EDGE_X = "80px";        
+const EDGE_Y = "200px";       
+const CENTER_X = "50vw";     
+const CENTER_Y = "40vh";   
+
 const IMAGE_POSITION_CONFIG = {
-	"top-left": { top: "10px", left: "10px" },
-	"top-center": { top: "10px", left: "50%", transform: "translateX(-50%)" },
-	"top-right": { top: "10px", right: "10px" },
-	"center-left": { top: "50%", left: "10px", transform: "translateY(-50%)" },
-	"left-center": { top: "50%", left: "10px", transform: "translateY(-50%)" },
-	"center-right": { top: "50%", right: "10px", transform: "translateY(-50%)" },
-	"right-center": { top: "50%", right: "10px", transform: "translateY(-50%)" },
-	"bottom-left": { bottom: "10px", left: "10px" },
-	"bottom-center": { bottom: "10px", left: "50%", transform: "translateX(-50%)" },
-	"bottom-right": { bottom: "10px", right: "10px" },
+  // top row
+  "top-left": {
+    left: EDGE_X,
+    top: "10px",
+  },
+  "top-center": {
+    left: CENTER_X,
+    top: "10px",
+  },
+  "top-right": {
+    left: `calc(100vw - ${EDGE_X})`,
+    top: "10px",
+  },
+
+  // middle row
+  "left-center": {
+    left: EDGE_X,
+    top: CENTER_Y,
+  },
+  "right-center": {
+    left: `calc(100vw - ${EDGE_X})`,
+    top: CENTER_Y,
+  },
+
+  // bottom row
+  "bottom-left": {
+    left: EDGE_X,
+    top: `calc(100vh - ${EDGE_Y})`,
+  },
+  "bottom-center": {
+    left: CENTER_X,
+    top: `calc(100vh - ${EDGE_Y})`,
+  },
+  "bottom-right": {
+    left: `calc(100vw - ${EDGE_X})`,
+    top: `calc(100vh - ${EDGE_Y})`,
+  },
 };
 
 function Tablet() {
@@ -257,7 +289,6 @@ function Tablet() {
 							width: "140px", // Smaller images to fit in margins
 							height: "auto",
 							zIndex: 1500, // Above paper
-							...posConfig, // Apply top/left/right/bottom from position config
 
               // CSS Variables
               "--start-x": startX,
@@ -265,7 +296,9 @@ function Tablet() {
               "--land-offset-x": `${offsetX}px`,
               "--land-offset-y": `${offsetY}px`,
               "--land-rotation": `${rotation}deg`,
-
+left: posConfig.left,
+  top: posConfig.top,
+              transform: "translate(-50%, -50%) rotate(var(--land-rotation))", // NEW
 							animation: "fly-in-from-edge 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.1) both",
               boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
 						}}
