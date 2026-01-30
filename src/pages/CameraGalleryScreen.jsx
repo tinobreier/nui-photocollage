@@ -1,19 +1,17 @@
 // General imports
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Box, ToggleButton, ToggleButtonGroup, IconButton, Typography, darken } from "@mui/material";
+import { Box, Button, ToggleButton, ToggleButtonGroup, IconButton, Typography, darken, alpha } from "@mui/material";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
-import CameraAltIconEnhanced from '@mui/icons-material/CameraEnhance';
+import CameraAltIconEnhanced from "@mui/icons-material/CameraEnhance";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 
 // Image transfer utilities
-import { 
-  sendImageToTablet, 
-  shouldTriggerSend,
-  getSwipeTransform 
-} from "../hooks/imageTransfer";
+import { sendImageToTablet, shouldTriggerSend, getSwipeTransform } from "../hooks/imageTransfer";
 
 // Shutter sound as base64 data URI (short click sound)
-const SHUTTER_SOUND_DATA = "data:audio/wav;base64,UklGRl4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToFAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA";
+const SHUTTER_SOUND_DATA =
+	"data:audio/wav;base64,UklGRl4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToFAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA";
 
 export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack }) {
 	const [mode, setMode] = useState("camera");
@@ -37,7 +35,7 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 	const pinchRef = useRef({ initialDistance: 0, initialZoom: 1 });
 	const handleRef = useRef(null);
 
-  const accentColor = "#4da6ff"
+	const accentColor = "#4da6ff";
 
 	/* ---------------- Audio Setup ---------------- */
 
@@ -79,7 +77,7 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 				pinchRef.current.initialZoom = zoom;
 			}
 		},
-		[zoom, getDistance]
+		[zoom, getDistance],
 	);
 
 	const handleTouchMove = useCallback(
@@ -92,7 +90,7 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 				setZoom(newZoom);
 			}
 		},
-		[getDistance]
+		[getDistance],
 	);
 
 	const handleTouchEnd = useCallback(() => {
@@ -182,11 +180,14 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 		setHandleDragCurrentY(touch.clientY);
 	}, []);
 
-	const onHandleTouchMove = useCallback((e) => {
-		if (!isDraggingHandle) return;
-		const touch = e.touches[0];
-		setHandleDragCurrentY(touch.clientY);
-	}, [isDraggingHandle]);
+	const onHandleTouchMove = useCallback(
+		(e) => {
+			if (!isDraggingHandle) return;
+			const touch = e.touches[0];
+			setHandleDragCurrentY(touch.clientY);
+		},
+		[isDraggingHandle],
+	);
 
 	const onHandleTouchEnd = useCallback(() => {
 		if (!isDraggingHandle) return;
@@ -208,27 +209,35 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 
 	/* ---------------- Image Swipe to Send ---------------- */
 
-	const onImageSwipeStart = useCallback((e) => {
-		if (!selectedImage) return;
-		const touch = e.touches[0];
-		setIsSwiping(true);
-		setSwipeStartY(touch.clientY);
-		setSwipeCurrentY(touch.clientY);
-	}, [selectedImage]);
+	// This makes mouse and touch work simultaneously
+	const getY = (e) => (e.touches ? e.touches[0].clientY : e.clientY);
 
-	const onImageSwipeMove = useCallback((e) => {
-		if (!isSwiping) return;
-		const touch = e.touches[0];
-		setSwipeCurrentY(touch.clientY);
-		// Log every 10 pixels for less spam
-		const delta = Math.abs(touch.clientY - swipeStartY);
-		if (delta % 10 < 5) {
-			console.log('Swiping... Delta:', swipeStartY - touch.clientY);
-		}
-	}, [isSwiping, swipeStartY]);
+	const onImageSwipeStart = useCallback(
+		(e) => {
+			if (!selectedImage) return;
+			const y = getY(e);
+			setIsSwiping(true);
+			setSwipeStartY(y);
+			setSwipeCurrentY(y);
+		},
+		[selectedImage],
+	);
+
+	const onImageSwipeMove = useCallback(
+		(e) => {
+			if (!isSwiping) return;
+			const y = getY(e);
+			setSwipeCurrentY(y);
+			// Log every 10 pixels for less spam
+			const delta = Math.abs(touch.clientY - swipeStartY);
+			if (delta % 10 < 5) {
+				console.log("Swiping... Delta:", swipeStartY - touch.clientY);
+			}
+		},
+		[isSwiping, swipeStartY],
+	);
 
 	const onImageSwipeEnd = useCallback(async () => {
-		
 		if (!isSwiping || !selectedImage) {
 			setIsSwiping(false);
 			return;
@@ -236,12 +245,10 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 
 		// Use utility function to check if swipe threshold is met
 		const shouldSend = shouldTriggerSend(swipeStartY, swipeCurrentY);
-		
-		if (shouldSend) {
 
+		if (shouldSend) {
 			const imageSrc = selectedImage.src;
 			setSelectedImage(null);
-			
 			const success = await sendImageToTablet(sendImage, selectedImage.src, userPosition);
 		}
 
@@ -283,6 +290,28 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 		<Box sx={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 			{/* MAIN CONTENT */}
 			<Box sx={{ flex: 1, position: "relative", overflow: "hidden" }}>
+				{/* Re-Scan Pill Button */}
+				{mode === "camera" && (
+					<Button
+						variant='contained'
+						startIcon={<QrCodeScannerIcon />}
+						onClick={onGoBack}
+						sx={{
+							position: "absolute",
+							top: 16,
+							left: 16,
+							zIndex: 10,
+							borderRadius: "50px",
+							bgcolor: "rgba(0,0,0,0.5)",
+							color: "white",
+							textTransform: "none", // (optional)
+							px: 2,
+							backdropFilter: "blur(6px)",
+						}}
+					>
+						Reposition
+					</Button>
+				)}
 				{mode === "camera" && (
 					<Box
 						ref={containerRef}
@@ -382,16 +411,27 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 									background: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 50%, #111 100%)",
 								}}
 							>
-								<Typography color='white' textAlign="center">Swipe your photo upwards <br/> to send it to the tablet</Typography>
+								<Typography color='white' textAlign='center'>
+									Swipe your photo upwards <br /> to send it to the tablet
+								</Typography>
 							</Box>
 						)}
 
 						{/* Middle section – detail / preview (only when collapsed) */}
 						{galleryHeight === "collapsed" && (
 							<Box
+								// Touch Events
 								onTouchStart={onImageSwipeStart}
 								onTouchMove={onImageSwipeMove}
 								onTouchEnd={onImageSwipeEnd}
+								// Mouse Events (for testing)
+								onMouseDown={onImageSwipeStart}
+								onMouseMove={(e) => {
+									// The movement is only calculated when we are in swiping mode
+									if (isSwiping) onImageSwipeMove(e);
+								}}
+								onMouseUp={onImageSwipeEnd}
+								onMouseLeave={onImageSwipeEnd}
 								sx={{
 									height: "35%",
 									display: "flex",
@@ -405,36 +445,50 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 							>
 								{selectedImage ? (
 									<>
-										<img 
-											src={selectedImage.src} 
-											alt='' 
-											style={{ 
-												maxWidth: "100%", 
+										<img
+											src={selectedImage.src}
+											alt=''
+											draggable='false'
+											style={{
+												maxWidth: "100%",
 												maxHeight: "100%",
-												...(isSwiping ? getSwipeTransform(swipeStartY, swipeCurrentY) : { transform: 'none', opacity: 1 }),
-												transition: isSwiping ? 'none' : 'transform 0.3s ease',
-											}} 
+												userSelect: "none",
+												pointerEvents: "none",
+												...(isSwiping ? getSwipeTransform(swipeStartY, swipeCurrentY) : { transform: "none", opacity: 1 }),
+												transition: isSwiping ? "none" : "transform 0.3s ease",
+											}}
 										/>
-										
-										
+
 										{/* Swipe Hint */}
 										{isSwiping && shouldTriggerSend(swipeStartY, swipeCurrentY - 20) && (
 											<Box
 												sx={{
-													position: 'absolute',
-													top: '16px',
-													left: '50%',
-													transform: 'translateX(-50%)',
-													bgcolor: 'rgba(77, 166, 255, 0.9)',
-													color: 'white',
-													padding: '8px 20px',
-													borderRadius: '20px',
-													fontSize: '0.9rem',
-													fontWeight: 'bold',
-													pointerEvents: 'none',
+													position: "absolute",
+													top: "16px",
+													left: "50%",
+													transform: "translateX(-50%)",
+													bgcolor: alpha(accentColor, 0.9),
+													color: "white",
+													padding: "8px 20px",
+													borderRadius: "20px",
+													fontSize: "0.9rem",
+                          whiteSpace: "nowrap",
+													fontWeight: "bold",
+													pointerEvents: "none",
+													animation: "popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.27) both",
+													"@keyframes popIn": {
+														"0%": {
+															opacity: 0,
+															transform: "translateX(-50%) translateY(25%) scale(0.6)",
+														},
+														"100%": {
+															opacity: 1,
+															transform: "translateX(-50%) translateY(0%) scale(1)",
+														},
+													},
 												}}
 											>
-												↑ Keep swiping to send
+												↑ Keep swiping to send ↑
 											</Box>
 										)}
 									</>
@@ -555,14 +609,7 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 							</Box>
 
 							{/* Hidden file input for device gallery access */}
-							<input
-								ref={fileInputRef}
-								type="file"
-								accept="image/*"
-								multiple
-								onChange={loadGalleryImages}
-								style={{ display: "none" }}
-							/>
+							<input ref={fileInputRef} type='file' accept='image/*' multiple onChange={loadGalleryImages} style={{ display: "none" }} />
 						</Box>
 					</Box>
 				)}
@@ -577,40 +624,40 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 				}}
 			>
 				<ToggleButtonGroup
-    value={mode}
-    exclusive
-    onChange={handleModeChange}
-    fullWidth
-    sx={{
-        bgcolor: "#222", 
-        borderRadius: "50px", // Outer frame as a pill
-        // padding: "2px",       // Creates the spacing for the "inlay" effect (optional, can be removed later if we want)
-        border: "1px solid #444", 
-        "& .MuiToggleButtonGroup-grouped": {
-            // Forces rounding on both sides for each button
-            borderRadius: "50px !important", 
-            border: "none !important",
-        },
-        "& .MuiToggleButton-root": {
-            color: "white",
-            // textTransform: "none", // Prevents automatic capitalization
-            "&:not(:first-of-type)": {
-                marginLeft: 0, // Prevents MUI standard margin correction
-            },
-        },
-        "& .MuiToggleButton-root.Mui-selected": {
-            bgcolor: accentColor,
-            color: "white",
-            fontWeight: 600,
-            "&.MuiToggleButton-root.Mui-selected:hover": {
-                bgcolor: darken(accentColor, 0.2)
-            },
-        },
-    }}
->
-    <ToggleButton value='camera'>Camera</ToggleButton>
-    <ToggleButton value='gallery'>Gallery</ToggleButton>
-</ToggleButtonGroup>
+					value={mode}
+					exclusive
+					onChange={handleModeChange}
+					fullWidth
+					sx={{
+						bgcolor: "#222",
+						borderRadius: "50px", // Outer frame as a pill
+						// padding: "2px",       // Creates the spacing for the "inlay" effect (optional, can be removed later if we want)
+						border: "1px solid #444",
+						"& .MuiToggleButtonGroup-grouped": {
+							// Forces rounding on both sides for each button
+							borderRadius: "50px !important",
+							border: "none !important",
+						},
+						"& .MuiToggleButton-root": {
+							color: "white",
+							// textTransform: "none", // Prevents automatic capitalization
+							"&:not(:first-of-type)": {
+								marginLeft: 0, // Prevents MUI standard margin correction
+							},
+						},
+						"& .MuiToggleButton-root.Mui-selected": {
+							bgcolor: accentColor,
+							color: "white",
+							fontWeight: 600,
+							"&.MuiToggleButton-root.Mui-selected:hover": {
+								bgcolor: darken(accentColor, 0.2),
+							},
+						},
+					}}
+				>
+					<ToggleButton value='camera'>Camera</ToggleButton>
+					<ToggleButton value='gallery'>Gallery</ToggleButton>
+				</ToggleButtonGroup>
 			</Box>
 		</Box>
 	);

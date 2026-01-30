@@ -233,14 +233,16 @@ function Tablet() {
 
 				// Add small random offset for visual variety (stacking effect)
 				const hash = image.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-				const offsetX = (hash % 30) - 15; // -15 to +15px
-				const offsetY = ((hash * 7) % 30) - 15; // -15 to +15px
-				const rotation = (hash % 20) - 10; // -10 to +10 degrees
+				const offsetX = (hash % 30) - 15; 
+				const offsetY = ((hash * 7) % 30) - 15; 
+				const rotation = (hash % 20) - 10; 
 
-				// Combine base transform with offsets and rotation
-				const baseTransform = posConfig.transform || "";
-				const offsetTransform = `translate(${offsetX}px, ${offsetY}px) rotate(${rotation}deg)`;
-				const combinedTransform = baseTransform ? `${baseTransform} ${offsetTransform}` : offsetTransform;
+        // Spawn outside viewport
+				let startX = "0px", startY = "0px";
+        if (image.position.includes("left")) startX = "-100vw";
+        else if (image.position.includes("right")) startX = "100vw";
+        if (image.position.includes("top")) startY = "-100vh";
+        else if (image.position.includes("bottom")) startY = "100vh";
 
 				const pos = positions[image.id] || {
 					x: window.innerWidth / 2,
@@ -256,15 +258,16 @@ function Tablet() {
 							height: "auto",
 							zIndex: 1500, // Above paper
 							...posConfig, // Apply top/left/right/bottom from position config
-							transform: combinedTransform,
-							boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-							animation: "fadeIn 0.5s ease-in",
-							animationDelay: `${index * 0.1}s`,
-							animationFillMode: "both",
-							"@keyframes fadeIn": {
-								from: { opacity: 0, transform: `${combinedTransform} scale(0.8)` },
-								to: { opacity: 1, transform: `${combinedTransform} scale(1)` }
-							}
+
+              // CSS Variables
+              "--start-x": startX,
+              "--start-y": startY,
+              "--land-offset-x": `${offsetX}px`,
+              "--land-offset-y": `${offsetY}px`,
+              "--land-rotation": `${rotation}deg`,
+
+							animation: "fly-in-from-edge 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.1) both",
+              boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
 						}}
 					>
 						<DraggablePhoto

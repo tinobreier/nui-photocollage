@@ -18,3 +18,21 @@ body {
     opacity: 0;
   }
 }
+
+/* Tablet.css */
+
+@keyframes fly-in-from-edge {
+  0% {
+    opacity: 0;
+    /* Photo starts outside */
+    transform: translate(var(--start-x), var(--start-y)) scale(0.5) rotate(0deg);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    /* Lands on its target position */
+    transform: translate(var(--land-offset-x), var(--land-offset-y)) rotate(var(--land-rotation)) scale(1);
+  }
+}
