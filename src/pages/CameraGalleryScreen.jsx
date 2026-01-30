@@ -26,6 +26,7 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 	const [swipeStartY, setSwipeStartY] = useState(0);
 	const [swipeCurrentY, setSwipeCurrentY] = useState(0);
 	const [isSwiping, setIsSwiping] = useState(false);
+	const [transmissionStatus, setTransmissionStatus] = useState(null); // null | "sending" | "success" | "error"
 
 	const videoRef = useRef(null);
 	const canvasRef = useRef(null);
@@ -214,8 +215,9 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 
 	const onImageSwipeStart = useCallback(
 		(e) => {
+			setTransmissionStatus(null);
 			if (!selectedImage) return;
-			const y = getY(e);
+      const y = getY(e);
 			setIsSwiping(true);
 			setSwipeStartY(y);
 			setSwipeCurrentY(y);
@@ -249,7 +251,19 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 		if (shouldSend) {
 			const imageSrc = selectedImage.src;
 			setSelectedImage(null);
-			const success = await sendImageToTablet(sendImage, selectedImage.src, userPosition);
+			setTransmissionStatus("sending");
+			try {
+				const success = await sendImageToTablet(sendImage, imageSrc, userPosition);
+				if (success) {
+					setTransmissionStatus("success");
+				} else {
+					setTransmissionStatus("error");
+				}
+			} catch (err) {
+				setTransmissionStatus("error");
+			}
+
+			setTimeout(() => setTransmissionStatus(null), 1500);
 		}
 
 		setIsSwiping(false);
@@ -472,7 +486,7 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 													padding: "8px 20px",
 													borderRadius: "20px",
 													fontSize: "0.9rem",
-                          whiteSpace: "nowrap",
+													whiteSpace: "nowrap",
 													fontWeight: "bold",
 													pointerEvents: "none",
 													animation: "popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.27) both",
@@ -494,6 +508,44 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 									</>
 								) : (
 									<Typography color='gray'>Select a photo for preview</Typography>
+								)}
+
+								{/* Transmission Status Feedback */}
+								{transmissionStatus && !isSwiping && (
+									<Box
+										sx={{
+											position: "absolute",
+											top: "16px",
+											left: "50%",
+											transform: "translateX(-50%)",
+											bgcolor: transmissionStatus === "success" ? "#4caf50" : transmissionStatus === "error" ? "#f44336" : accentColor,
+											color: "white",
+											padding: "8px 20px",
+											borderRadius: "20px",
+											fontSize: "0.9rem",
+											whiteSpace: "nowrap",
+											fontWeight: "bold",
+											pointerEvents: "none",
+											zIndex: 20,
+											animation: "popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.27) forwards, fadeOutUp 0.5s ease forwards 2.5s",
+											"@keyframes popIn": {
+												"0%": { opacity: 0, transform: "translateX(-50%) translateY(25%) scale(0.6)" },
+												"100%": { opacity: 1, transform: "translateX(-50%) translateY(0%) scale(1)" },
+											},
+											"@keyframes fadeOutUp": {
+												"0%": {
+													opacity: 1,
+													transform: "translateX(-50%) translateY(0)",
+												},
+												"100%": {
+													opacity: 0,
+													transform: "translateX(-50%) translateY(-20px)",
+												},
+											},
+										}}
+									>
+										{transmissionStatus === "success" && "Photo sent ✔"}
+									</Box>
 								)}
 							</Box>
 						)}
