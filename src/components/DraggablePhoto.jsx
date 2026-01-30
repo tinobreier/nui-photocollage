@@ -1,34 +1,23 @@
-import { useSpring, animated } from '@react-spring/web';
-import { useGesture } from '@use-gesture/react';
+import { useEffect } from 'react';
+import { animated } from '@react-spring/web';
+import { useTransformGesture } from '../utils/useTransformGesture';
 
-export default function DraggablePhoto({ src, id, initialPos = { x: 0, y: 0 }, style = {}, onUpdate }) {
-  const [spring, api] = useSpring(() => ({
-    x: initialPos.x,
-    y: initialPos.y,
-    scale: 1,
-    rotate: 0,
-    config: { tension: 300, friction: 30 },
-  }));
+export default function DraggablePhoto({ src, id, initialPos = { x: 0, y: 0 }, onUpdate }) {
+  const { bind, style } = useTransformGesture();
 
-  const bind = useGesture({
-    onDrag: ({ offset: [x, y] }) => {
-      api.start({ x, y });
-    },
-    onPinch: ({ offset: [d, a] }) => {
-      api.start({ scale: 1 + d / 200, rotate: a });
-    },
-    onHover: ({ hovering }) => {
-      api.start({ scale: hovering ? 1.05 : 1 });
-    }
-  }, {
-    drag: { from: () => [spring.x.get(), spring.y.get()] },
-    pinch: { scaleBounds: { min: 0.5, max: 2 }, rubberband: true }
-  });
+  // Set initial position once
+  useEffect(() => {
+    style.x.set(initialPos.x);
+    style.y.set(initialPos.y);
+    style.scale.set(1);
+    style.rotateZ.set(0);
+  }, [initialPos.x, initialPos.y, style]);
 
   return (
     <animated.img
       {...bind()}
       src={src}
+      alt="draggable"
       style={{
         touchAction: 'none',
         cursor: 'grab',
@@ -39,10 +28,12 @@ export default function DraggablePhoto({ src, id, initialPos = { x: 0, y: 0 }, s
         border: '6px solid white',
         boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
         position: 'fixed',
-        ...spring,
-        ...style
+        // IMPORTANT: combine translate, scale, rotate in one transform
+        transform: style.x.to(
+          (x) =>
+            `translateX(${x}px) translateY(${style.y.get()}px) scale(${style.scale.get()}) rotateZ(${style.rotateZ.get()}deg)`
+        ),
       }}
-      alt="draggable"
     />
   );
 }
