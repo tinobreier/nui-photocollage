@@ -1,23 +1,25 @@
-import { useEffect } from 'react';
+import { memo, useRef } from 'react';
 import { animated } from '@react-spring/web';
 import { useTransformGesture } from '../utils/useTransformGesture';
 
-export default function DraggablePhoto({ src, id, initialPos = { x: 0, y: 0 }, onUpdate }) {
-  const { bind, style } = useTransformGesture();
-
-  // Set initial position once
-  useEffect(() => {
-    style.x.set(initialPos.x);
-    style.y.set(initialPos.y);
-    style.scale.set(1);
-    style.rotateZ.set(0);
-  }, [initialPos.x, initialPos.y, style]);
+const DraggablePhoto = memo(function DraggablePhoto({ src, id, initialPos, rotation, onUpdate }) {
+  // Only save initialPos during the FIRST mount, then ignore it
+  const initialPosRef = useRef(initialPos);
+  const { bind, style, stateRef } = useTransformGesture(initialPosRef.current);
 
   return (
     <animated.img
       {...bind()}
       src={src}
       alt="draggable"
+      onPointerUp={() => {
+        onUpdate?.(id, {
+          x: stateRef.current.x,
+          y: stateRef.current.y,
+          scale: stateRef.current.scale,
+          rotate: stateRef.current.rotateZ
+        });
+      }}
       style={{
         touchAction: 'none',
         cursor: 'grab',
@@ -27,13 +29,19 @@ export default function DraggablePhoto({ src, id, initialPos = { x: 0, y: 0 }, o
         borderRadius: '6px',
         border: '6px solid white',
         boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-        position: 'fixed',
-        // IMPORTANT: combine translate, scale, rotate in one transform
-        transform: style.x.to(
-          (x) =>
-            `translateX(${x}px) translateY(${style.y.get()}px) scale(${style.scale.get()}) rotateZ(${style.rotateZ.get()}deg)`
-        ),
+        position: 'absolute',
+        x: style.x,
+        y: style.y,
+        scale: style.scale,
+        rotateZ: style.rotateZ.to(z => z + rotation),
       }}
     />
   );
-}
+}, (prevProps, nextProps) => {
+  // Only re-render if src or rotation changes (No changes to initialPos or the onUpdate)
+  return prevProps.src === nextProps.src &&
+         prevProps.rotation === nextProps.rotation &&
+         prevProps.id === nextProps.id;
+});
+
+export default DraggablePhoto;

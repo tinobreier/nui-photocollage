@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { usePlayroom } from "../hooks/usePlayroom";
 import { Box, IconButton, Paper, Typography, darken } from "@mui/material";
 import { MARKER_POSITIONS } from "../marker-config";
@@ -6,7 +6,6 @@ import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 
 // use gestures
 import { animated } from '@react-spring/web'
-import { useTransformGesture } from '../utils/useTransformGesture'
 import usePreventZoom from '../utils/usePreventZoom'
 import DraggablePhoto from "../components/DraggablePhoto";
 
@@ -99,7 +98,12 @@ function Tablet() {
 	const [showMarkers, setShowMarkers] = useState(false);
 	const [dots, setDots] = useState({});
 	const [collageImages, setCollageImages] = useState([]);
-	const [positions, setPositions] = useState({});
+	const positionsRef = useRef({});
+
+	// Callback reference for DraggablePhoto
+	const handlePhotoUpdate = useCallback((id, newPos) => {
+		positionsRef.current[id] = newPos;
+	}, []);
 
 
 	useEffect(() => {
@@ -139,16 +143,37 @@ function Tablet() {
 			if (data.type === "image-sent") {
 				console.log("[Tablet] Image received from position:", data.position);
 
+        const id = crypto.randomUUID();
+        const posConfig = IMAGE_POSITION_CONFIG[data.position] || { top: "50%", left: "50%" };
+        
+        // Stabile Zufallswerte generieren
+        const hash = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+          const stableOffsetX = (hash % 30) - 15;
+  const stableOffsetY = ((hash * 7) % 30) - 15;
+        const stableRotation = (hash % 20) - 10;
+
+				// Stabile initialPosition - wird einmal erstellt und im Image-Objekt gespeichert
+				const initialPosition = { x: 0, y: 0, scale: 1, rotate: 0 };
+
 				// Add image to collage
 				const newImage = {
-					id: crypto.randomUUID(),
+					id: id,
 					src: data.imageData,
 					position: data.position,
+					initialPosition,  // Stabile Referenz im Objekt
+          initialStyles: {
+            left: posConfig.left,
+            top: posConfig.top,
+            rotation: stableRotation,
+            offsetX: stableOffsetX,
+      offsetY: stableOffsetY,
+          },
 					playerId: data.playerId,
 					timestamp: data.timestamp,
 				};
 
 				setCollageImages(prev => [...prev, newImage]);
+        positionsRef.current[id] = initialPosition;  // Gleiche Referenz!
 			}
 
 			if (data.type === "player-left") {
@@ -260,26 +285,12 @@ function Tablet() {
 
 			{/* Image Collage - positioned relative to VIEWPORT edges, not paper */}
 			{collageImages.map((image, index) => {
-				// Get base position config (now relative to viewport)
-				const posConfig = IMAGE_POSITION_CONFIG[image.position] || { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
-
-				// Add small random offset for visual variety (stacking effect)
-				const hash = image.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-				const offsetX = (hash % 30) - 15; 
-				const offsetY = ((hash * 7) % 30) - 15; 
-				const rotation = (hash % 20) - 10; 
-
         // Spawn outside viewport
 				let startX = "0px", startY = "0px";
         if (image.position.includes("left")) startX = "-100vw";
         else if (image.position.includes("right")) startX = "100vw";
         if (image.position.includes("top")) startY = "-100vh";
         else if (image.position.includes("bottom")) startY = "100vh";
-
-				const pos = positions[image.id] || {
-					x: window.innerWidth / 2,
-					y: window.innerHeight / 2
-				};
 
 				return (
 					<Box
@@ -293,12 +304,12 @@ function Tablet() {
               // CSS Variables
               "--start-x": startX,
               "--start-y": startY,
-              "--land-offset-x": `${offsetX}px`,
-              "--land-offset-y": `${offsetY}px`,
-              "--land-rotation": `${rotation}deg`,
-left: posConfig.left,
-  top: posConfig.top,
-              transform: "translate(-50%, -50%) rotate(var(--land-rotation))", // NEW
+              "--land-offset-x": `${image.initialStyles.offsetX}px`,
+              "--land-offset-y": `${image.initialStyles.offsetY}px`,
+              "--land-rotation": `${image.initialStyles.rotation}deg`,
+left: image.initialStyles.left,
+  top: image.initialStyles.top,
+              transform: "translate(-50%, -50%)", // NEW
 							animation: "fly-in-from-edge 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.1) both",
               boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
 						}}
@@ -306,17 +317,13 @@ left: posConfig.left,
 						<DraggablePhoto
 							component="img"
 							id={image.id}
-							key={image.id}
 							src={image.src}
+              initialPos={image.initialPosition}
+              rotation={image.initialStyles.rotation}
 							alt={`Photo from ${image.position}`}
-							//initialPos={pos}
-							initialX={image.x}
-							initialY={image.y}
 							animating={image.animating}
 							style={{ /* transform: posConfig.transform,  */zIndex: 1500 }}
-							onUpdate={(id, newPos) =>
-								setPositions(prev => ({ ...prev, [id]: newPos }))
-							}
+							onUpdate={handlePhotoUpdate}
 							sx={{
 								width: "100%",
 								height: "auto",
@@ -324,7 +331,6 @@ left: posConfig.left,
 								border: "6px solid white",
 								boxSizing: "border-box"
 							}}
-
 						/>
 					</Box>
 				);

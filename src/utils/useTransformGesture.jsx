@@ -1,31 +1,42 @@
+import { useRef } from 'react';
 import { useSpring } from '@react-spring/web';
 import { useGesture } from '@use-gesture/react';
 
-export function useTransformGesture(onUpdate) {
+export function useTransformGesture(initialValues = {}) {
+  // Saves the current state (Updated during drag/pinch)
+  const stateRef = useRef({
+    x: initialValues.x ?? 0,
+    y: initialValues.y ?? 0,
+    scale: initialValues.scale ?? 1,
+    rotateZ: initialValues.rotate ?? 0,
+  });
+
   const [style, api] = useSpring(() => ({
-    x: 0,
-    y: 0,
-    scale: 1,
-    rotateZ: 0,
+    x: stateRef.current.x,
+    y: stateRef.current.y,
+    scale: stateRef.current.scale,
+    rotateZ: stateRef.current.rotateZ,
     config: { tension: 300, friction: 30 },
   }));
 
-  const bind = useGesture(
-    {
-      onDrag: ({ offset: [dx, dy] }) => {
-        api.start({ x: dx, y: dy });
-        onUpdate?.({ x: dx, y: dy, scale: style.scale.get(), rotate: style.rotateZ.get() });
-      },
-      onPinch: ({ offset: [s, a] }) => {
-        api.start({ scale: s, rotateZ: a });
-        onUpdate?.({ x: style.x.get(), y: style.y.get(), scale: s, rotate: a });
-      },
-    },
-    {
-      drag: { from: () => [style.x.get(), style.y.get()] },
-      pinch: { scaleBounds: { min: 0.5, max: 2 }, rubberband: true },
-    }
-  );
+  // Exists only once!
+  const gestureConfig = useRef({
+    drag: { from: () => [stateRef.current.x, stateRef.current.y] },
+    pinch: { scaleBounds: { min: 0.5, max: 2 }, rubberband: true },
+  }).current;
 
-  return { bind, style };
+  const bind = useGesture({
+    onDrag: ({ offset: [dx, dy] }) => {
+      stateRef.current.x = dx;
+      stateRef.current.y = dy;
+      api.start({ x: dx, y: dy });
+    },
+    onPinch: ({ offset: [s, a] }) => {
+      stateRef.current.scale = s;
+      stateRef.current.rotateZ = a;
+      api.start({ scale: s, rotateZ: a });
+    },
+  }, gestureConfig);
+
+  return { bind, style, stateRef };
 }
