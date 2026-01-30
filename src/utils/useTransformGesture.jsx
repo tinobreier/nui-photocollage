@@ -23,7 +23,7 @@ export function useTransformGesture(onUpdate) {
     },
     {
       drag: { from: () => [style.x.get(), style.y.get()] },
-      pinch: { scaleBounds: { min: 0.5, max: 3 }, rubberband: true },
+      pinch: { scaleBounds: { min: 0.5, max: 1 }, rubberband: true },
     }
   );
 
