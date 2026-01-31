@@ -5,8 +5,8 @@ import { MARKER_POSITIONS } from "../marker-config";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 
 // use gestures
-import { animated } from '@react-spring/web'
-import usePreventZoom from '../utils/usePreventZoom'
+import { animated } from "@react-spring/web";
+import usePreventZoom from "../utils/usePreventZoom";
 import DraggablePhoto from "../components/DraggablePhoto";
 
 import "./Tablet.css";
@@ -55,58 +55,58 @@ const CENTER_Y = "40vh";
 // Base rotation based on player seating position (diagonal for corners)
 // Photos spawn rotated so they appear right-side-up for the player sitting at that position
 const POSITION_BASE_ROTATION = {
-  "top-left": 135,
-  "top-center": 180,
-  "top-right": -135,
-  "left-center": 90,
-  "right-center": -90,
-  "bottom-left": 45,
-  "bottom-center": 0,
-  "bottom-right": -45,
-};   
+	"top-left": 135,
+	"top-center": 180,
+	"top-right": -135,
+	"left-center": 90,
+	"right-center": -90,
+	"bottom-left": 45,
+	"bottom-center": 0,
+	"bottom-right": -45,
+};
 
 const IMAGE_POSITION_CONFIG = {
-  // top row
-  "top-left": {
-    left: EDGE_X,
-    top: "10px",
-  },
-  "top-center": {
-    left: CENTER_X,
-    top: "10px",
-  },
-  "top-right": {
-    left: `calc(100vw - ${EDGE_X})`,
-    top: "10px",
-  },
+	// top row
+	"top-left": {
+		left: EDGE_X,
+		top: "10px",
+	},
+	"top-center": {
+		left: CENTER_X,
+		top: "10px",
+	},
+	"top-right": {
+		left: `calc(100vw - ${EDGE_X})`,
+		top: "10px",
+	},
 
-  // middle row
-  "left-center": {
-    left: EDGE_X,
-    top: CENTER_Y,
-  },
-  "right-center": {
-    left: `calc(100vw - ${EDGE_X})`,
-    top: CENTER_Y,
-  },
+	// middle row
+	"left-center": {
+		left: EDGE_X,
+		top: CENTER_Y,
+	},
+	"right-center": {
+		left: `calc(100vw - ${EDGE_X})`,
+		top: CENTER_Y,
+	},
 
-  // bottom row
-  "bottom-left": {
-    left: EDGE_X,
-    top: `calc(100vh - ${EDGE_Y})`,
-  },
-  "bottom-center": {
-    left: CENTER_X,
-    top: `calc(100vh - ${EDGE_Y})`,
-  },
-  "bottom-right": {
-    left: `calc(100vw - ${EDGE_X})`,
-    top: `calc(100vh - ${EDGE_Y})`,
-  },
+	// bottom row
+	"bottom-left": {
+		left: EDGE_X,
+		top: `calc(100vh - ${EDGE_Y})`,
+	},
+	"bottom-center": {
+		left: CENTER_X,
+		top: `calc(100vh - ${EDGE_Y})`,
+	},
+	"bottom-right": {
+		left: `calc(100vw - ${EDGE_X})`,
+		top: `calc(100vh - ${EDGE_Y})`,
+	},
 };
 
 function Tablet() {
-	usePreventZoom()
+	usePreventZoom();
 	const { onMessage } = usePlayroom();
 	const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight);
 	const [showMarkers, setShowMarkers] = useState(false);
@@ -115,17 +115,19 @@ function Tablet() {
 	const positionsRef = useRef({});
 
 	// Get player color dynamically from their current position
-	const getPlayerColor = useCallback((playerId) => {
-		const playerDot = dots[playerId];
-		if (!playerDot) return null;
-		return DOT_INDICATOR_CONFIG[playerDot.position]?.color || null;
-	}, [dots]);
+	const getPlayerColor = useCallback(
+		(playerId) => {
+			const playerDot = dots[playerId];
+			if (!playerDot) return null;
+			return DOT_INDICATOR_CONFIG[playerDot.position]?.color || null;
+		},
+		[dots],
+	);
 
 	// Callback reference for DraggablePhoto
 	const handlePhotoUpdate = useCallback((id, newPos) => {
 		positionsRef.current[id] = newPos;
 	}, []);
-
 
 	useEffect(() => {
 		const handleResize = () => setIsLandscape(window.innerWidth > window.innerHeight);
@@ -165,60 +167,55 @@ function Tablet() {
 				console.log(`[Tablet] >>> MARKER RELEASED: Position "${posLabel}" (ID ${data.markerId}) by player ${data.playerId}`);
 			}
 
-
 			if (data.type === "image-sent") {
 				console.log("[Tablet] Image received from position:", data.position);
 
-        const id = crypto.randomUUID();
-        const posConfig = IMAGE_POSITION_CONFIG[data.position] || { top: "50%", left: "50%" };
-        
-        // Stabile Zufallswerte generieren
-        const hash = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const stableOffsetX = (hash % 30) - 15;
-        const stableOffsetY = ((hash * 7) % 30) - 15;
-        const stableRotation = (hash % 20) - 10;
-        // Base rotation for player's seating position (visual-only, doesn't affect drag)
-        const baseRotation = POSITION_BASE_ROTATION[data.position] || 0;
-        // Small random rotation variation (added to pinch rotation)
+				const id = crypto.randomUUID();
+				const posConfig = IMAGE_POSITION_CONFIG[data.position] || { top: "50%", left: "50%" };
+
+				// Stabile Zufallswerte generieren
+				const hash = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+				const stableOffsetX = (hash % 30) - 15;
+				const stableOffsetY = ((hash * 7) % 30) - 15;
+				const stableRotation = (hash % 20) - 10;
+				// Base rotation for player's seating position (visual-only, doesn't affect drag)
+				const baseRotation = POSITION_BASE_ROTATION[data.position] || 0;
+				// Small random rotation variation (added to pinch rotation)
 
 				// Stabile initialPosition - wird einmal erstellt und im Image-Objekt gespeichert
-				const initialPosition = { 
-  x: stableOffsetX, 
-  y: stableOffsetY, 
-  scale: 1, 
-  rotate: stableRotation 
-};
+				const initialPosition = {
+					x: stableOffsetX,
+					y: stableOffsetY,
+					scale: 1,
+					rotate: stableRotation,
+				};
 
 				// Add image to collage
 				const newImage = {
 					id: id,
 					src: data.imageData,
 					position: data.position,
-					initialPosition,  // Stabile Referenz im Objekt
-          initialStyles: {
-            left: posConfig.left,
-            top: posConfig.top,
-            baseRotation: baseRotation,  // Visual-only rotation for seating position
-            rotation: stableRotation,     // Random variation for pinch
-            offsetX: stableOffsetX,
-            offsetY: stableOffsetY,
-          },
+					initialPosition, // Stabile Referenz im Objekt
+					initialStyles: {
+						left: posConfig.left,
+						top: posConfig.top,
+						baseRotation: baseRotation, // Visual-only rotation for seating position
+						rotation: stableRotation, // Random variation for pinch
+						offsetX: stableOffsetX,
+						offsetY: stableOffsetY,
+					},
 					playerId: data.playerId,
 					timestamp: data.timestamp,
-					isAnimating: true,  // Animation-Flag - wird nach Ablauf deaktiviert
+					isAnimating: true, // Animation-Flag - wird nach Ablauf deaktiviert
 				};
 
-				setCollageImages(prev => [...prev, newImage]);
-        positionsRef.current[id] = initialPosition;  // Gleiche Referenz!
+				setCollageImages((prev) => [...prev, newImage]);
+				positionsRef.current[id] = initialPosition; // Gleiche Referenz!
 
 				// Animation nach Ablauf entfernen, damit sie bei Re-Renders nicht erneut angewendet wird
 				setTimeout(() => {
-					setCollageImages(prev =>
-						prev.map(img =>
-							img.id === id ? { ...img, isAnimating: false } : img
-						)
-					);
-				}, 1200);  // Etwas länger als Animation (800ms) für Sicherheitspuffer
+					setCollageImages((prev) => prev.map((img) => (img.id === id ? { ...img, isAnimating: false } : img)));
+				}, 1200); // Etwas länger als Animation (800ms) für Sicherheitspuffer
 			}
 
 			if (data.type === "player-left") {
@@ -304,12 +301,8 @@ function Tablet() {
 						// DIN A4 aspect ratio: 297x210mm (landscape) or 210x297mm (portrait)
 						// Use min() to ensure the paper fits within 85% of viewport while preserving aspect ratio
 						aspectRatio: isLandscape ? "297 / 210" : "210 / 297",
-						width: isLandscape
-							? "min(85vw, 85vh * (297 / 210))"
-							: "min(85vw, 85vh * (210 / 297))",
-						height: isLandscape
-							? "min(85vh, 85vw * (210 / 297))"
-							: "min(85vh, 85vw * (297 / 210))",
+						width: isLandscape ? "min(85vw, 85vh * (297 / 210))" : "min(85vw, 85vh * (210 / 297))",
+						height: isLandscape ? "min(85vh, 85vw * (210 / 297))" : "min(85vh, 85vw * (297 / 210))",
 						boxShadow: "0 10px 10px rgba(0,0,0,0.2)",
 						bgcolor: "white",
 						borderRadius: "1px",
@@ -330,12 +323,13 @@ function Tablet() {
 
 			{/* Image Collage - positioned relative to VIEWPORT edges, not paper */}
 			{collageImages.map((image, index) => {
-        // Spawn outside viewport
-				let startX = "0px", startY = "0px";
-        if (image.position.includes("left")) startX = "-100vw";
-        else if (image.position.includes("right")) startX = "100vw";
-        if (image.position.includes("top")) startY = "-100vh";
-        else if (image.position.includes("bottom")) startY = "100vh";
+				// Spawn outside viewport
+				let startX = "0px",
+					startY = "0px";
+				if (image.position.includes("left")) startX = "-100vw";
+				else if (image.position.includes("right")) startX = "100vw";
+				if (image.position.includes("top")) startY = "-100vh";
+				else if (image.position.includes("bottom")) startY = "100vh";
 
 				return (
 					<Box
@@ -346,21 +340,19 @@ function Tablet() {
 							height: "auto",
 							zIndex: 1500, // Above paper
 
-              // CSS Variables
-              "--start-x": startX,
-              "--start-y": startY,
-              "--land-offset-x": `${image.initialStyles.offsetX}px`,
-              "--land-offset-y": `${image.initialStyles.offsetY}px`,
-              "--land-rotation": `${image.initialStyles.rotation}deg`,
-              left: image.initialStyles.left,
-              top: image.initialStyles.top,
-              transform: "translate(-50%, -50%)",
-							animation: image.isAnimating
-								? "fly-in-from-edge 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.1) both"
-								: "none",
-              boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
-              // Hide photos when markers are shown (visual only)
-              visibility: showMarkers ? "hidden" : "visible",
+							// CSS Variables
+							"--start-x": startX,
+							"--start-y": startY,
+							"--land-offset-x": `${image.initialStyles.offsetX}px`,
+							"--land-offset-y": `${image.initialStyles.offsetY}px`,
+							"--land-rotation": `${image.initialStyles.rotation}deg`,
+							left: image.initialStyles.left,
+							top: image.initialStyles.top,
+							transform: "translate(-50%, -50%)",
+							animation: image.isAnimating ? "fly-in-from-edge 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.1) both" : "none",
+							boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
+							// Hide photos when markers are shown (visual only)
+							visibility: showMarkers ? "hidden" : "visible",
 						}}
 					>
 						<DraggablePhoto
@@ -369,8 +361,8 @@ function Tablet() {
 							initialPos={image.initialPosition}
 							baseRotation={image.initialStyles.baseRotation}
 							rotation={image.initialStyles.rotation}
-              offsetX={image.initialStyles.offsetX} // <-- NEU
-              offsetY={image.initialStyles.offsetY}
+							offsetX={image.initialStyles.offsetX} // <-- NEU
+							offsetY={image.initialStyles.offsetY}
 							onUpdate={handlePhotoUpdate}
 							playerColor={getPlayerColor(image.playerId)}
 						/>

@@ -30,6 +30,7 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 	const [swipeCurrentY, setSwipeCurrentY] = useState(0);
 	const [isSwiping, setIsSwiping] = useState(false);
 	const [transmissionStatus, setTransmissionStatus] = useState(null); // null | "sending" | "success" | "error"
+	const [flyingImage, setFlyingImage] = useState(null);
 
 	const videoRef = useRef(null);
 	const canvasRef = useRef(null);
@@ -144,6 +145,9 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 			};
 
 			setImages((prev) => [img, ...prev]);
+
+			setFlyingImage(url);
+			setTimeout(() => setFlyingImage(null), 850);
 		}, "image/jpeg");
 	};
 
@@ -218,7 +222,7 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 		(e) => {
 			setTransmissionStatus(null);
 			if (!selectedImage) return;
-      const y = getY(e);
+			const y = getY(e);
 			setIsSwiping(true);
 			setSwipeStartY(y);
 			setSwipeCurrentY(y);
@@ -326,6 +330,42 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 					>
 						Reposition
 					</Button>
+				)}
+				{/* Animation: Flying Thumbnail */}
+				{flyingImage && (
+					<Box
+						sx={{
+							position: "fixed",
+							top: "50%",
+							left: "50%",
+							width: "150px",
+							height: "150px",
+							zIndex: 9999,
+							pointerEvents: "none",
+							borderRadius: 2,
+							overflow: "hidden",
+							boxShadow: "0px 10px 30px rgba(0,0,0,0.5)",
+							border: "2px solid white",
+							backgroundImage: `url(${flyingImage})`,
+							backgroundSize: "cover",
+							backgroundPosition: "center",
+							animation: "flyToTab 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+							"@keyframes flyToTab": {
+								"0%": {
+									transform: "translate(-50%, -50%) scale(1)",
+									opacity: 1,
+								},
+								"60%": {
+									opacity: 1,
+								},
+								"100%": {
+									/* Zielt auf die Position des rechten Tabs (Photos taken) */
+									transform: "translate(20vw, 40vh) scale(0.1)",
+									opacity: 0,
+								},
+							},
+						}}
+					/>
 				)}
 				{mode === "camera" && (
 					<Box
