@@ -46,7 +46,7 @@ function Phone() {
 	const [currentMarker, setCurrentMarker] = useState(null);
 	const [debugInfo, setDebugInfo] = useState({ fps: 0, detections: 0, processingTime: 0 });
 	const [confirmFeedback, setConfirmFeedback] = useState(false);
-	const [screen, setScreen] = useState("markerDetection"); // "scanner" | "cameraGallery"; Default on markerDetection
+	const [screen, setScreen] = useState("markerDetection"); // "markerDetection" | "confirmation" | "cameraGallery"
 	const [labelPos, setLabelPos] = useState({ x: 0, y: 0 });
 	const [detectedMarker, setDetectedMarker] = useState(null); // For creating the state from scratch
 	const [confirmStatus, setConfirmStatus] = useState(false);
@@ -485,7 +485,10 @@ function Phone() {
 
 		setConfirmFeedback(true);
 		setTimeout(() => setConfirmFeedback(false), 1500);
-		setScreen("cameraGallery");
+
+		// Show confirmation screen, then transition to camera gallery
+		setScreen("confirmation");
+		setTimeout(() => setScreen("cameraGallery"), 1200);
 	};
 
 	// Show error
@@ -522,8 +525,8 @@ function Phone() {
 
 	return (
 		<div className='phone-container' style={{ position: "relative", backgroundColor: "#000", overflow: "hidden" }}>
-			{screen === "markerDetection" && (
-				<>
+			<Fade in={screen === "markerDetection"} timeout={250} unmountOnExit>
+				<div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
 					{/* DEBUG DISPLAY */}
 					{debugDisplay && (
 						<div
@@ -706,9 +709,42 @@ function Phone() {
 							{confirmFeedback ? "Confirmed" : "Confirm Position"}
 						</button>
 					)}
-				</>
-			)}
-			{screen === "cameraGallery" && <CameraGalleryScreen key="cameraGallery" sendImage={sendImage} userPosition={userPosition} onGoBack={handleGoBack} accentColor={accentColor} />}
+				</div>
+			</Fade>
+
+			{/* Confirmation Screen - shows briefly after marker confirmation */}
+			<Fade in={screen === "confirmation"} timeout={150} unmountOnExit>
+				<div
+					style={{
+						position: "absolute",
+						top: 0,
+						left: 0,
+						right: 0,
+						bottom: 0,
+						backgroundColor: accentColor,
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+					}}
+				>
+					<Typography
+						variant="h5"
+						sx={{
+							color: "white",
+							fontWeight: "bold",
+							textAlign: "center",
+						}}
+					>
+						Position confirmed ✔
+					</Typography>
+				</div>
+			</Fade>
+
+			<Fade in={screen === "cameraGallery"} timeout={400} unmountOnExit>
+				<div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+					<CameraGalleryScreen key="cameraGallery" sendImage={sendImage} userPosition={userPosition} onGoBack={handleGoBack} accentColor={accentColor} />
+				</div>
+			</Fade>
 		</div>
 	);
 }
