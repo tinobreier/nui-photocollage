@@ -3,6 +3,13 @@ import { usePlayroom } from "../hooks/usePlayroom";
 import { Box, IconButton, Paper, Typography, darken } from "@mui/material";
 import { MARKER_POSITIONS } from "../marker-config";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
+import * as htmlToImage from 'html-to-image';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import DownloadIcon from '@mui/icons-material/Download';
+import QrCodeIcon from '@mui/icons-material/QrCode';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 
 // use gestures
 import { animated } from "@react-spring/web";
@@ -113,6 +120,64 @@ function Tablet() {
 	const [dots, setDots] = useState({});
 	const [collageImages, setCollageImages] = useState([]);
 	const positionsRef = useRef({});
+  const exportRef = useRef(null);
+
+const [anchorEl, setAnchorEl] = useState(null);
+const open = Boolean(anchorEl);
+
+const handleMenuClick = (event) => {
+  setAnchorEl(event.currentTarget);
+};
+
+const handleMenuClose = () => {
+  setAnchorEl(null);
+};
+
+const handleActionExport = () => {
+  handleMenuClose();
+  handleExport(); // Deine bestehende Export-Funktion
+};
+
+const handleActionToggleMarkers = () => {
+  handleMenuClose();
+  setShowMarkers(!showMarkers);
+};
+
+const handleActionClearAll = () => {
+  handleMenuClose();
+  if (window.confirm("Are you sure you want to delete all photos?")) {
+    setCollageImages([]);
+    positionsRef.current = {}; // Reset positions as well
+  }
+};
+
+const handleExport = async () => {
+  if (!exportRef.current) return;
+
+  try {
+    const dataUrl = await htmlToImage.toPng(exportRef.current, {
+      // Whitelist-Logik:
+      filter: (node) => {
+        if (node === exportRef.current) return true;
+
+        if (node.classList && node.classList.contains('nuiexport')) return true;
+
+        if (node.closest && node.closest('.nuiexport')) return true;
+
+        return false;
+      },
+      backgroundColor: '#dbdbdb', // Damit der Hintergrund zwischen den Fotos gefüllt ist
+      pixelRatio: 3, // Für hohe Qualität
+    });
+
+    const link = document.createElement('a');
+    link.download = `collage-${Date.now()}.png`;
+    link.href = dataUrl;
+    link.click();
+  } catch (err) {
+    console.error('Export fehlgeschlagen:', err);
+  }
+};
 
 	// Get player color dynamically from their current position
 	const getPlayerColor = useCallback(
@@ -248,6 +313,7 @@ function Tablet() {
 
 	return (
 		<Box
+      ref={exportRef}
 			sx={{
 				width: "100vw",
 				height: "100vh",
@@ -260,20 +326,48 @@ function Tablet() {
 				alignItems: "center",
 			}}
 		>
-			<IconButton
-				onClick={() => setShowMarkers(!showMarkers)}
-				sx={{
-					position: "absolute",
-					top: 20,
-					right: 20,
-					zIndex: 1000,
-					color: "white",
-					bgcolor: "rgba(0,0,0,0.3)",
-					"&:hover": { bgcolor: "rgba(0,0,0,0.5)" },
-				}}
-			>
-				<QrCodeScannerIcon fontSize='medium' />
-			</IconButton>
+			{/* Oben rechts: Das 3-Dot Menü */}
+<Box sx={{ position: "absolute", top: 20, right: 20, zIndex: 1000 }}>
+  <IconButton
+    onClick={handleMenuClick}
+    sx={{
+      color: "white",
+      bgcolor: "rgba(0,0,0,0.3)",
+      "&:hover": { bgcolor: "rgba(0,0,0,0.5)" },
+    }}
+  >
+    <MoreVertIcon />
+  </IconButton>
+  
+  <Menu
+    anchorEl={anchorEl}
+    open={open}
+    onClose={handleMenuClose}
+    anchorOrigin={{
+      vertical: 'bottom',
+      horizontal: 'right',
+    }}
+    transformOrigin={{
+      vertical: 'top',
+      horizontal: 'right',
+    }}
+  >
+    <MenuItem onClick={handleActionToggleMarkers}>
+      <QrCodeIcon sx={{ mr: 1, fontSize: '1.2rem' }} />
+      {showMarkers ? "Hide Markers" : "Show Markers"}
+    </MenuItem>
+    
+    <MenuItem onClick={handleActionExport}>
+      <DownloadIcon sx={{ mr: 1, fontSize: '1.2rem' }} />
+      Export Collage
+    </MenuItem>
+
+    <MenuItem onClick={handleActionClearAll} sx={{ color: 'error.main' }}>
+      <DeleteSweepIcon sx={{ mr: 1, fontSize: '1.2rem' }} />
+      Clear all photos
+    </MenuItem>
+  </Menu>
+</Box>
 
 			{showMarkers && (
 				<Box sx={{ position: "absolute", inset: 0, bgcolor: "white", zIndex: 900 }}>
@@ -294,7 +388,7 @@ function Tablet() {
 			)}
 
 			{/* Paper / Workspace */}
-			<Box sx={{ width: "100%", height: "100%", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1, pointerEvents: "none" }}>
+			<Box sx={{ width: "100%", height: "100%", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1, pointerEvents: "none" }} className="nuiexport">
 				<Paper
 					elevation={0}
 					sx={{
@@ -334,6 +428,7 @@ function Tablet() {
 				return (
 					<Box
 						key={image.id}
+            className="nuiexport"
 						sx={{
 							position: "fixed", // FIXED positioning relative to viewport
 							width: "140px", // Smaller images to fit in margins
@@ -357,6 +452,7 @@ function Tablet() {
 					>
 						<DraggablePhoto
 							id={image.id}
+              className="nuiexport"
 							src={image.src}
 							initialPos={image.initialPosition}
 							baseRotation={image.initialStyles.baseRotation}
