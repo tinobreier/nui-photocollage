@@ -360,17 +360,20 @@ function Phone() {
 		const handleVisibilityChange = () => {
 			if (document.hidden) {
 				// User has switched tabs or locked their phone - release marker reservation
-				releaseAllMyMarkers();
-				cancelMarker();
+				// releaseAllMyMarkers();
+				// cancelMarker();
 			} else {
 				// When the user comes back and we still have their marker
 				if (currentMarker && screen === "cameraGallery") {
 					// Try to re-reserve the marker
 					const success = reserveMarker(currentMarker.id);
 					if (success) {
+        releaseAllMyMarkers();
+				cancelMarker();
+
 						const position = MARKER_POSITIONS[currentMarker.id];
 						sendMarkerConfirmation(currentMarker.id, position);
-		setUserPosition(position); // Store the position for camera gallery
+						setUserPosition(position); // Store the position for camera gallery
 					} else {
 						// Someone took our spot while we were away - go back to scanner
 						setScreen("markerDetection");
@@ -384,53 +387,52 @@ function Phone() {
 			document.removeEventListener("visibilitychange", handleVisibilityChange);
 		};
 	}, [cancelMarker, sendMarkerConfirmation, currentMarker, screen, releaseAllMyMarkers, reserveMarker]);
-		sendImage,
+	(sendImage,
+		// Initialize; only run once on mount, after DOM is ready
+		useEffect(() => {
+			let mounted = true;
 
-	// Initialize; only run once on mount, after DOM is ready
-	useEffect(() => {
-		let mounted = true;
+			async function init() {
+				// Wait for video element to be available in DOM
+				let attempts = 0;
+				const maxAttempts = 50; // 5 seconds max
+				while (!videoRef.current && attempts < maxAttempts) {
+					await new Promise((resolve) => setTimeout(resolve, 100));
+					attempts++;
+				}
 
-		async function init() {
-			// Wait for video element to be available in DOM
-			let attempts = 0;
-			const maxAttempts = 50; // 5 seconds max
-			while (!videoRef.current && attempts < maxAttempts) {
-				await new Promise((resolve) => setTimeout(resolve, 100));
-				attempts++;
-			}
+				if (!mounted || !videoRef.current) {
+					console.log("[Init] Aborted - component unmounted or video not ready after", attempts, "attempts");
+					return;
+				}
+				console.log("[Init] Video element ready after", attempts, "attempts");
 
-			if (!mounted || !videoRef.current) {
-				console.log("[Init] Aborted - component unmounted or video not ready after", attempts, "attempts");
-				return;
-			}
-			console.log("[Init] Video element ready after", attempts, "attempts");
+				try {
+					console.log("Starting initialization...");
+					// 1. Start camera first
+					await startCamera();
+					if (!mounted) return;
+					console.log("Camera ready");
 
-			try {
-				console.log("Starting initialization...");
-				// 1. Start camera first
-				await startCamera();
-				if (!mounted) return;
-				console.log("Camera ready");
+					// 2. Brief wait in case Playroom/Detector need more time
+					setLoadingMessage("Synchronizing...");
 
-				// 2. Brief wait in case Playroom/Detector need more time
-				setLoadingMessage("Synchronizing...");
-
-				setIsLoading(false);
-				console.log("Loading complete");
-			} catch (err) {
-				console.error("Init Fehler:", err);
-				if (mounted) {
-					setError(err.message);
 					setIsLoading(false);
+					console.log("Loading complete");
+				} catch (err) {
+					console.error("Init Fehler:", err);
+					if (mounted) {
+						setError(err.message);
+						setIsLoading(false);
+					}
 				}
 			}
-		}
-		init();
+			init();
 
-		return () => {
-			mounted = false;
-		};
-	}, [screen]); // Empty deps = means run only once on mount
+			return () => {
+				mounted = false;
+			};
+		}, [screen])); // Empty deps = means run only once on mount
 
 	// Update overlay size
 	useEffect(() => {
@@ -463,6 +465,9 @@ function Phone() {
 			console.log("[Phone] handleConfirm() - No marker detected, aborting");
 			return;
 		}
+
+    await releaseAllMyMarkers(); 
+    cancelMarker();
 
 		console.log("[Phone] Attempting to reserve marker", currentMarker.id);
 
@@ -510,14 +515,14 @@ function Phone() {
 
 	const handleGoBack = () => {
 		// Release our reserved marker
-		releaseAllMyMarkers();
+		// releaseAllMyMarkers();
 
 		// Tell the tablet that we are leaving our position
-		cancelMarker();
+		// cancelMarker();
 
 		// Reset UI states
-		setDetectedMarker(null);
-		setConfirmStatus(false);
+		// setDetectedMarker(null);
+		// setConfirmStatus(false);
 
 		// Set screen back on marker detector
 		setScreen("markerDetection");
@@ -728,7 +733,7 @@ function Phone() {
 					}}
 				>
 					<Typography
-						variant="h5"
+						variant='h5'
 						sx={{
 							color: "white",
 							fontWeight: "bold",
@@ -742,7 +747,13 @@ function Phone() {
 
 			<Fade in={screen === "cameraGallery"} timeout={400} unmountOnExit>
 				<div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-					<CameraGalleryScreen key="cameraGallery" sendImage={sendImage} userPosition={userPosition} onGoBack={handleGoBack} accentColor={accentColor} />
+					<CameraGalleryScreen
+						key='cameraGallery'
+						sendImage={sendImage}
+						userPosition={userPosition}
+						onGoBack={handleGoBack}
+						accentColor={accentColor}
+					/>
 				</div>
 			</Fade>
 		</div>
