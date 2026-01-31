@@ -47,10 +47,23 @@ export const DOT_INDICATOR_CONFIG = {
 
 // Position-based image placement (images appear at viewport edges/corners)
 // Positioned with custom safety margins so images stay fully visible
-const EDGE_X = "80px";        
-const EDGE_Y = "200px";       
-const CENTER_X = "50vw";     
-const CENTER_Y = "40vh";   
+const EDGE_X = "80px";
+const EDGE_Y = "200px";
+const CENTER_X = "50vw";
+const CENTER_Y = "40vh";
+
+// Base rotation based on player seating position (diagonal for corners)
+// Photos spawn rotated so they appear right-side-up for the player sitting at that position
+const POSITION_BASE_ROTATION = {
+  "top-left": 135,
+  "top-center": 180,
+  "top-right": -135,
+  "left-center": 90,
+  "right-center": -90,
+  "bottom-left": 45,
+  "bottom-center": 0,
+  "bottom-right": -45,
+};   
 
 const IMAGE_POSITION_CONFIG = {
   // top row
@@ -156,8 +169,11 @@ function Tablet() {
         
         // Stabile Zufallswerte generieren
         const hash = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-          const stableOffsetX = (hash % 30) - 15;
-  const stableOffsetY = ((hash * 7) % 30) - 15;
+        const stableOffsetX = (hash % 30) - 15;
+        const stableOffsetY = ((hash * 7) % 30) - 15;
+        // Base rotation for player's seating position (visual-only, doesn't affect drag)
+        const baseRotation = POSITION_BASE_ROTATION[data.position] || 0;
+        // Small random rotation variation (added to pinch rotation)
         const stableRotation = (hash % 20) - 10;
 
 				// Stabile initialPosition - wird einmal erstellt und im Image-Objekt gespeichert
@@ -172,9 +188,10 @@ function Tablet() {
           initialStyles: {
             left: posConfig.left,
             top: posConfig.top,
-            rotation: stableRotation,
+            baseRotation: baseRotation,  // Visual-only rotation for seating position
+            rotation: stableRotation,     // Random variation for pinch
             offsetX: stableOffsetX,
-      offsetY: stableOffsetY,
+            offsetY: stableOffsetY,
           },
 					playerId: data.playerId,
 					timestamp: data.timestamp,
@@ -323,23 +340,13 @@ left: image.initialStyles.left,
 						}}
 					>
 						<DraggablePhoto
-							component="img"
 							id={image.id}
 							src={image.src}
-              initialPos={image.initialPosition}
-              rotation={image.initialStyles.rotation}
-							alt={`Photo from ${image.position}`}
-							animating={image.animating}
-							style={{ /* transform: posConfig.transform,  */zIndex: 1500 }}
+							initialPos={image.initialPosition}
+							baseRotation={image.initialStyles.baseRotation}
+							rotation={image.initialStyles.rotation}
 							onUpdate={handlePhotoUpdate}
 							playerColor={getPlayerColor(image.playerId)}
-							sx={{
-								width: "100%",
-								height: "auto",
-								borderRadius: "4px",
-								border: "6px solid white",
-								boxSizing: "border-box"
-							}}
 						/>
 					</Box>
 				);
