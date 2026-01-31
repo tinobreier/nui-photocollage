@@ -5,9 +5,14 @@ import { useTransformGesture } from '../utils/useTransformGesture';
 // CSS fly-in animation duration + buffer
 const FLY_IN_ANIMATION_DURATION = 900;
 
-const DraggablePhoto = memo(function DraggablePhoto({ src, id, initialPos, baseRotation = 0, rotation, onUpdate, playerColor }) {
+const DraggablePhoto = memo(function DraggablePhoto({ src, id, initialPos, baseRotation = 0, rotation, onUpdate, playerColor,offsetX = 0, offsetY = 0 }) {
   // Only save initialPos during the FIRST mount, then ignore it
-  const initialPosRef = useRef(initialPos);
+  const initialPosRef = useRef({
+    ...initialPos,
+    x: offsetX, // Startet bei z.B. 15 statt 0
+    y: offsetY, // Startet bei z.B. -10 statt 0
+    rotateZ: rotation // Startet bei der Zufalls-Rotation
+  });
   // Skip spring sync during CSS fly-in animation to prevent interference
   const { bind, style, stateRef } = useTransformGesture(initialPosRef.current, {
     skipSyncUntil: FLY_IN_ANIMATION_DURATION
@@ -33,7 +38,7 @@ const DraggablePhoto = memo(function DraggablePhoto({ src, id, initialPos, baseR
         x: style.x,
         y: style.y,
         scale: style.scale,
-        rotateZ: style.rotateZ.to(z => z + rotation),
+        rotateZ: style.rotateZ,
       }}
     >
       <img

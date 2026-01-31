@@ -232,9 +232,9 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 			const y = getY(e);
 			setSwipeCurrentY(y);
 			// Log every 10 pixels for less spam
-			const delta = Math.abs(touch.clientY - swipeStartY);
+			const delta = Math.abs(e.touches[0].clientY - swipeStartY);
 			if (delta % 10 < 5) {
-				console.log("Swiping... Delta:", swipeStartY - touch.clientY);
+				console.log("Swiping... Delta:", swipeStartY - e.touches[0].clientY);
 			}
 		},
 		[isSwiping, swipeStartY],

@@ -176,13 +176,18 @@ function Tablet() {
         const hash = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const stableOffsetX = (hash % 30) - 15;
         const stableOffsetY = ((hash * 7) % 30) - 15;
+        const stableRotation = (hash % 20) - 10;
         // Base rotation for player's seating position (visual-only, doesn't affect drag)
         const baseRotation = POSITION_BASE_ROTATION[data.position] || 0;
         // Small random rotation variation (added to pinch rotation)
-        const stableRotation = (hash % 20) - 10;
 
 				// Stabile initialPosition - wird einmal erstellt und im Image-Objekt gespeichert
-				const initialPosition = { x: 0, y: 0, scale: 1, rotate: 0 };
+				const initialPosition = { 
+  x: stableOffsetX, 
+  y: stableOffsetY, 
+  scale: 1, 
+  rotate: stableRotation 
+};
 
 				// Add image to collage
 				const newImage = {
@@ -213,7 +218,7 @@ function Tablet() {
 							img.id === id ? { ...img, isAnimating: false } : img
 						)
 					);
-				}, 850);  // Etwas länger als Animation (800ms) für Sicherheitspuffer
+				}, 1200);  // Etwas länger als Animation (800ms) für Sicherheitspuffer
 			}
 
 			if (data.type === "player-left") {
@@ -364,6 +369,8 @@ function Tablet() {
 							initialPos={image.initialPosition}
 							baseRotation={image.initialStyles.baseRotation}
 							rotation={image.initialStyles.rotation}
+              offsetX={image.initialStyles.offsetX} // <-- NEU
+              offsetY={image.initialStyles.offsetY}
 							onUpdate={handlePhotoUpdate}
 							playerColor={getPlayerColor(image.playerId)}
 						/>
