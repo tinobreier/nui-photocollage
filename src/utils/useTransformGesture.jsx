@@ -22,7 +22,7 @@ export function useTransformGesture(initialValues = {}) {
   // Exists only once!
   const gestureConfig = useRef({
     drag: { from: () => [stateRef.current.x, stateRef.current.y] },
-    pinch: { scaleBounds: { min: 0.5, max: 2 }, rubberband: true },
+    pinch: { scaleBounds: { min: 0.5 }, rubberband: true },
   }).current;
 
   const bind = useGesture({
