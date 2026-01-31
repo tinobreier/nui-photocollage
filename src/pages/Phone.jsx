@@ -16,6 +16,9 @@ import CenterFocusWeakIcon from "@mui/icons-material/CenterFocusWeak";
 const DEFAULT_ACCENT_COLOR = "#4da6ff";
 const reservedColor = "#ff4444"; // Red for reserved markers
 
+// Colors that need dark text (bottom-center and bottom-left are light colors)
+const LIGHT_ACCENT_COLORS = ["#40C4FF", "#14e4e4"];
+
 // Get player color based on their confirmed position
 const getPlayerColor = (position) => {
 	if (!position) return DEFAULT_ACCENT_COLOR;
@@ -52,6 +55,20 @@ function Phone() {
 
 	// Dynamic accent color based on player's confirmed position
 	const accentColor = getPlayerColor(userPosition);
+
+	// Preview color: temporarily shows the color of the currently scanned marker (if available)
+	const getPreviewColor = () => {
+		// If marker is reserved by someone else, don't preview - use accent color
+		if (currentMarker?.isReservedByOther) return accentColor;
+		// If we have a valid marker, show its position color as preview
+		if (currentMarker) {
+			const position = MARKER_POSITIONS[currentMarker.id];
+			return DOT_INDICATOR_CONFIG[position]?.color || accentColor;
+		}
+		// No marker detected - use accent color (confirmed position or default)
+		return accentColor;
+	};
+	const previewColor = getPreviewColor();
 
 	const videoRef = useRef(null);
 	const canvasRef = useRef(null);
@@ -149,7 +166,7 @@ function Phone() {
 		return score;
 	}, []);
 
-	const drawBorderAroundMarker = useCallback((detection, overlay, params, isReservedByOther = false) => {
+	const drawBorderAroundMarker = useCallback((detection, overlay, params, isReservedByOther = false, markerColor) => {
 		if (!overlay) return null;
 
 		const ctx = overlay.getContext("2d");
@@ -167,8 +184,8 @@ function Phone() {
 		const corners = detection.corners.map(mapP);
 		const center = mapP(detection.center);
 
-		// Use red color if marker is reserved by someone else
-		const borderColor = isReservedByOther ? reservedColor : accentColor;
+		// Use red color if marker is reserved by someone else, otherwise use the marker's position color
+		const borderColor = isReservedByOther ? reservedColor : markerColor;
 
 		ctx.strokeStyle = borderColor;
 		ctx.lineWidth = 6;
@@ -286,7 +303,10 @@ function Phone() {
 			}
 
 			setCurrentMarker({ ...best, isReservedByOther });
-			const centerPos = drawBorderAroundMarker(best, overlay, scaleParams, isReservedByOther);
+			// Get the color for this marker's position
+			const markerPosition = MARKER_POSITIONS[best.id];
+			const markerColor = DOT_INDICATOR_CONFIG[markerPosition]?.color || accentColor;
+			const centerPos = drawBorderAroundMarker(best, overlay, scaleParams, isReservedByOther, markerColor);
 			if (centerPos) setLabelPos(centerPos);
 		} else {
 			setCurrentMarker(null);
@@ -592,7 +612,7 @@ function Phone() {
 									backgroundColor: isCurrentMarkerReserved ? "#fff0f0" : "white",
 									padding: "12px 20px",
 									borderRadius: "16px",
-									border: `3px solid ${isCurrentMarkerReserved ? reservedColor : accentColor}`,
+									border: `3px solid ${isCurrentMarkerReserved ? reservedColor : previewColor}`,
 									boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
 									display: "flex",
 									flexDirection: "column",
@@ -600,6 +620,7 @@ function Phone() {
 									justifyContent: "center",
 									minWidth: "120px",
 									textAlign: "center",
+									transition: "border-color 0.25s ease",
 								}}
 							>
 								{/* Reserved indicator */}
@@ -651,7 +672,8 @@ function Phone() {
 										height: 0,
 										borderLeft: "12px solid transparent",
 										borderRight: "12px solid transparent",
-										borderTop: `12px solid ${isCurrentMarkerReserved ? reservedColor : accentColor}`,
+										borderTop: `12px solid ${isCurrentMarkerReserved ? reservedColor : previewColor}`,
+										transition: "border-top-color 0.25s ease",
 									}}
 								/>
 							</div>
@@ -668,8 +690,8 @@ function Phone() {
 								bottom: "40px",
 								left: "50%",
 								transform: "translateX(-50%)",
-								backgroundColor: accentColor,
-								color: "white",
+								backgroundColor: previewColor,
+								color: LIGHT_ACCENT_COLORS.includes(previewColor) ? "black" : "white",
 								padding: "16px 48px",
 								borderRadius: "40px",
 								border: "none",
@@ -678,6 +700,7 @@ function Phone() {
 								boxShadow: "none",
 								zIndex: 100,
 								cursor: "pointer",
+								transition: "background-color 0.25s ease, color 0.25s ease",
 							}}
 						>
 							{confirmFeedback ? "Confirmed" : "Confirm Position"}

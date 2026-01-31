@@ -9,6 +9,9 @@ import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 // Image transfer utilities
 import { sendImageToTablet, shouldTriggerSend, getSwipeTransform } from "../hooks/imageTransfer";
 
+// Colors that need dark text (bottom-center and bottom-left are light colors)
+const LIGHT_ACCENT_COLORS = ["#14e4e4", "#40C4FF"];
+
 // Shutter sound as base64 data URI (short click sound)
 const SHUTTER_SOUND_DATA =
 	"data:audio/wav;base64,UklGRl4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToFAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA";
@@ -697,7 +700,7 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 						},
 						"& .MuiToggleButton-root.Mui-selected": {
 							bgcolor: accentColor,
-							color: "white",
+							color: LIGHT_ACCENT_COLORS.includes(accentColor) ? "black" : "white",
 							fontWeight: 600,
 							"&.MuiToggleButton-root.Mui-selected:hover": {
 								bgcolor: darken(accentColor, 0.2),

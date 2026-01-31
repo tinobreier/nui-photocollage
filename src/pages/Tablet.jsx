@@ -33,16 +33,16 @@ const markers = Object.entries(MARKER_POSITIONS).map(([id, position], index) => 
 // Dots are 40px, positioned so 30% is hidden outside viewport (-12px offset)
 // Exported for use in Phone UI to color elements by player position
 export const DOT_INDICATOR_CONFIG = {
-	"top-left": { color: "#FF5252", top: -12, left: -12, transform: "none" },
-	"top-center": { color: "#FF4081", top: -12, left: "50%", transform: "translateX(-50%)" },
-	"top-right": { color: "#E040FB", top: -12, right: -12, transform: "none" },
-	"center-left": { color: "#7C4DFF", top: "50%", left: -12, transform: "translateY(-50%)" },
-	"left-center": { color: "#7C4DFF", top: "50%", left: -12, transform: "translateY(-50%)" },
-	"center-right": { color: "#536DFE", top: "50%", right: -12, transform: "translateY(-50%)" },
-	"right-center": { color: "#536DFE", top: "50%", right: -12, transform: "translateY(-50%)" },
-	"bottom-left": { color: "#448AFF", bottom: -12, left: -12, transform: "none" },
-	"bottom-center": { color: "#40C4FF", bottom: -12, left: "50%", transform: "translateX(-50%)" },
-	"bottom-right": { color: "#18FFFF", bottom: -12, right: -12, transform: "none" },
+	"top-left": { color: "#FF4081", top: -12, left: -12, transform: "none" },
+	"top-center": { color: "#E040FB", top: -12, left: "50%", transform: "translateX(-50%)" },
+	"top-right": { color: "#536DFE", top: -12, right: -12, transform: "none" },
+	"center-left": { color: "#FF5252", top: "50%", left: -12, transform: "translateY(-50%)" },
+	"left-center": { color: "#FF5252", top: "50%", left: -12, transform: "translateY(-50%)" },
+	"center-right": { color: "#14e4e4", top: "50%", right: -12, transform: "translateY(-50%)" },
+	"right-center": { color: "#14e4e4", top: "50%", right: -12, transform: "translateY(-50%)" },
+	"bottom-left": { color: "#7C4DFF", bottom: -12, left: -12, transform: "none" },
+	"bottom-center": { color: "#448AFF", bottom: -12, left: "50%", transform: "translateX(-50%)" },
+	"bottom-right": { color: "#40C4FF", bottom: -12, right: -12, transform: "none" },
 };
 
 // Position-based image placement (images appear at viewport edges/corners)
@@ -332,11 +332,13 @@ function Tablet() {
               "--land-offset-x": `${image.initialStyles.offsetX}px`,
               "--land-offset-y": `${image.initialStyles.offsetY}px`,
               "--land-rotation": `${image.initialStyles.rotation}deg`,
-left: image.initialStyles.left,
-  top: image.initialStyles.top,
-              transform: "translate(-50%, -50%)", // NEW
+              left: image.initialStyles.left,
+              top: image.initialStyles.top,
+              transform: "translate(-50%, -50%)",
 							animation: "fly-in-from-edge 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.1) both",
               boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
+              // Hide photos when markers are shown (visual only)
+              visibility: showMarkers ? "hidden" : "visible",
 						}}
 					>
 						<DraggablePhoto
