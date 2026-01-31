@@ -357,20 +357,20 @@ function Phone() {
 
 	// Tab in foreground/background?
 	useEffect(() => {
-		const handleVisibilityChange = () => {
+		const handleVisibilityChange = async () => {
 			if (document.hidden) {
-				// User has switched tabs or locked their phone - release marker reservation
-				// releaseAllMyMarkers();
-				// cancelMarker();
+				// User has switched tabs or locked their phone - set dot to inactive
+				cancelMarker();
 			} else {
 				// When the user comes back and we still have their marker
 				if (currentMarker && screen === "cameraGallery") {
-					// Try to re-reserve the marker
-					const success = reserveMarker(currentMarker.id);
-					if (success) {
-        releaseAllMyMarkers();
-				cancelMarker();
+					// First release the old marker
+					releaseAllMyMarkers();
+					cancelMarker();
 
+					// Then try to re-reserve the marker
+					const success = await reserveMarker(currentMarker.id);
+					if (success) {
 						const position = MARKER_POSITIONS[currentMarker.id];
 						sendMarkerConfirmation(currentMarker.id, position);
 						setUserPosition(position); // Store the position for camera gallery
@@ -387,9 +387,9 @@ function Phone() {
 			document.removeEventListener("visibilitychange", handleVisibilityChange);
 		};
 	}, [cancelMarker, sendMarkerConfirmation, currentMarker, screen, releaseAllMyMarkers, reserveMarker]);
-	(sendImage,
-		// Initialize; only run once on mount, after DOM is ready
-		useEffect(() => {
+
+	// Initialize; only run once on mount, after DOM is ready
+	useEffect(() => {
 			let mounted = true;
 
 			async function init() {
@@ -432,7 +432,7 @@ function Phone() {
 			return () => {
 				mounted = false;
 			};
-		}, [screen])); // Empty deps = means run only once on mount
+		}, [screen]); // Empty deps = means run only once on mount
 
 	// Update overlay size
 	useEffect(() => {
@@ -514,15 +514,8 @@ function Phone() {
 	const isCurrentMarkerReserved = currentMarker?.isReservedByOther || false;
 
 	const handleGoBack = () => {
-		// Release our reserved marker
-		// releaseAllMyMarkers();
-
-		// Tell the tablet that we are leaving our position
-		// cancelMarker();
-
-		// Reset UI states
-		// setDetectedMarker(null);
-		// setConfirmStatus(false);
+		// Tell the tablet that we are leaving our position (sets dot to inactive)
+		cancelMarker();
 
 		// Set screen back on marker detector
 		setScreen("markerDetection");

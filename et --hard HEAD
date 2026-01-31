@@ -1,0 +1,53 @@
+* [33mc4486d9[m[33m ([m[1;36mHEAD -> [m[1;32mplayroom[m[33m)[m Fixed that when tabbed out or while changing the marker, the current marker is not already been freed
+* [33m78873e2[m[33m ([m[1;31morigin/playroom[m[33m)[m Removed max. scaling apply-able by the user
+* [33m0ddd9bc[m Added confirmation screen after marker confirmation + smooth fade transition into it
+* [33m7e8018c[m Changed player colors so there is no confusion with error-colored ui elements
+* [33m309be27[m accent color dynamically changes while inside the marker detection screen to immerse the user
+* [33m33cb29e[m Freshly transmitted photos are now oriented towards the players' seating direction
+* [33ma4850f1[m Add accentColor changes based on player color, photos have player-colored outline, Change Gallery to Photos taken
+* [33m976bb8e[m Fixed bug where images would teleport back when UI Updates happen
+* [33m9c5e217[m Fixed target position of photos right after transmission (eye-balled)
+* [33me36a24a[m Add feedback after transmission
+* [33m7135693[m Swipe to transmit works on PC, keep swiping box animated slightly
+* [33m26e3334[m changed max scaling size again
+* [33me305f8d[m[33m ([m[1;31morigin/design[m[33m)[m change max size for scaling photos
+* [33mb8b8ba9[m added new scaling
+* [33m9c72bb3[m added new translate photo
+* [33m36257b6[m added new dragging
+*   [33mad51acb[m Merge branch 'playroom' into design
+[32m|[m[33m\[m  
+[32m|[m * [33mc0af66d[m added imageTransfer file
+[32m|[m * [33me58a920[m added all swipe functions
+[32m|[m * [33m27cf963[m Added marker reservation and freeing
+[32m|[m * [33m869edfc[m Introduced player colors (based on edge/corner scanned), added white paper as workspace, added player dot indications (with inactive state when tab not focused), fixed positioning bug of the border around marker (on phone)
+* [33m|[m [33m16a9075[m added now actually preventing pinch zoom
+* [33m|[m [33mf287e34[m added rotation and object scaling + prevent tablet screen zoom
+* [33m|[m [33mfc85a99[m added camera + galerie import + dragging + bugs
+[33m|[m [33m|[m * [33m6d5bd86[m[33m ([m[1;31morigin/gh-pages[m[33m)[m Updates
+[33m|[m [33m|[m * [33mb5e1222[m Updates
+[33m|[m [33m|[m * [33m388fc93[m Updates
+[33m|[m [33m|[m * [33m8c43972[m Updates
+[33m|[m [33m|[m * [33mae44d91[m Updates
+[33m|[m [33m|[m * [33m3180576[m Updates
+[33m|[m [33m|[m * [33m9b75786[m Updates
+[33m|[m [33m|[m * [33mff7ee4a[m Updates
+[33m|[m [33m|[m * [33m42bb072[m Updates
+[33m|[m [33m|[m * [33mf0cf004[m Updates
+[33m|[m [33m|[m [34m|[m * [33m40c835e[m[33m ([m[1;31morigin/swipe[m[33m)[m added swipe on phone, pictures to tablet + marker specific position
+[33m|[m [33m|[m [34m|[m[33m/[m  
+[33m|[m [33m|[m[33m/[m[34m|[m   
+[33m|[m * [34m|[m [33mc685d18[m Updated marker detection ui, Changed default font to Fira Sans (exchangable later)
+[33m|[m * [34m|[m [33m85d3861[m Add tab icon, enhanced phone ui (ToggleGroup at the bottom), enhanced role/device selection screen
+[33m|[m * [34m|[m [33mb473c40[m Fixed problem with static-ness of gh pages
+[33m|[m * [34m|[m [33mac2c820[m Updated Phone UI after marker detection
+[33m|[m[33m/[m [34m/[m  
+* [34m|[m [33mb94a771[m Updated README
+* [34m|[m [33m3773fa3[m Fixed problems with routing and marker detection, removed old leftover files
+* [34m|[m [33mafcc4e9[m Set up gh-pages hosting
+* [34m|[m [33m47046bf[m Add React+Vite infrastructure, Uses basic react component structure, Needs adjustments with the marker detection
+* [34m|[m [33mbc06fa0[m Updated README
+* [34m|[m [33m579badd[m[33m ([m[1;32mgh-pages[m[33m)[m Use Playroom for cross-device communication
+[34m|[m[34m/[m  
+* [33m36cc36b[m Deploy site to GitHub Pages
+* [33me983911[m[33m ([m[1;31mpages/main[m[33m, [m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m Add annotated markers (use only for printing)
+* [33md833734[m First commit

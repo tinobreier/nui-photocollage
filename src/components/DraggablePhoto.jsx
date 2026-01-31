@@ -2,10 +2,16 @@ import { memo, useRef } from 'react';
 import { animated } from '@react-spring/web';
 import { useTransformGesture } from '../utils/useTransformGesture';
 
+// CSS fly-in animation duration + buffer
+const FLY_IN_ANIMATION_DURATION = 900;
+
 const DraggablePhoto = memo(function DraggablePhoto({ src, id, initialPos, baseRotation = 0, rotation, onUpdate, playerColor }) {
   // Only save initialPos during the FIRST mount, then ignore it
   const initialPosRef = useRef(initialPos);
-  const { bind, style, stateRef } = useTransformGesture(initialPosRef.current);
+  // Skip spring sync during CSS fly-in animation to prevent interference
+  const { bind, style, stateRef } = useTransformGesture(initialPosRef.current, {
+    skipSyncUntil: FLY_IN_ANIMATION_DURATION
+  });
 
   return (
     <animated.div

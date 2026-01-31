@@ -133,10 +133,15 @@ function Tablet() {
 
 		const unsubscribe = onMessage((data) => {
 			if (data.type === "marker-confirmed") {
-				setDots((prev) => ({
-					...prev,
-					[data.playerId]: { position: data.position, status: "active", isPopping: false },
-				}));
+				console.log(`[Tablet] MARKER-CONFIRMED: playerId=${data.playerId}, position=${data.position}`);
+				setDots((prev) => {
+					const oldPos = prev[data.playerId]?.position;
+					console.log(`[Tablet] dots update: ${oldPos} -> ${data.position}`);
+					return {
+						...prev,
+						[data.playerId]: { position: data.position, status: "active", isPopping: false },
+					};
+				});
 			}
 
 			if (data.type === "marker-cancelled") {
@@ -195,10 +200,20 @@ function Tablet() {
           },
 					playerId: data.playerId,
 					timestamp: data.timestamp,
+					isAnimating: true,  // Animation-Flag - wird nach Ablauf deaktiviert
 				};
 
 				setCollageImages(prev => [...prev, newImage]);
         positionsRef.current[id] = initialPosition;  // Gleiche Referenz!
+
+				// Animation nach Ablauf entfernen, damit sie bei Re-Renders nicht erneut angewendet wird
+				setTimeout(() => {
+					setCollageImages(prev =>
+						prev.map(img =>
+							img.id === id ? { ...img, isAnimating: false } : img
+						)
+					);
+				}, 850);  // Etwas länger als Animation (800ms) für Sicherheitspuffer
 			}
 
 			if (data.type === "player-left") {
@@ -335,7 +350,9 @@ function Tablet() {
               left: image.initialStyles.left,
               top: image.initialStyles.top,
               transform: "translate(-50%, -50%)",
-							animation: "fly-in-from-edge 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.1) both",
+							animation: image.isAnimating
+								? "fly-in-from-edge 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.1) both"
+								: "none",
               boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
               // Hide photos when markers are shown (visual only)
               visibility: showMarkers ? "hidden" : "visible",
