@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePlayroom } from "../hooks/usePlayroom";
 import { Box, IconButton, Paper, Typography, darken } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText, Button, Avatar } from "@mui/material";
 import { MARKER_POSITIONS } from "../marker-config";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
-import * as htmlToImage from 'html-to-image';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import DownloadIcon from '@mui/icons-material/Download';
-import QrCodeIcon from '@mui/icons-material/QrCode';
-import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
+import * as htmlToImage from "html-to-image";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import DownloadIcon from "@mui/icons-material/Download";
+import QrCodeIcon from "@mui/icons-material/QrCode";
+import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
+import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
+import GroupIcon from "@mui/icons-material/Group";
 
 // use gestures
 import { animated } from "@react-spring/web";
@@ -120,64 +123,73 @@ function Tablet() {
 	const [dots, setDots] = useState({});
 	const [collageImages, setCollageImages] = useState([]);
 	const positionsRef = useRef({});
-  const exportRef = useRef(null);
+	const exportRef = useRef(null);
 
-const [anchorEl, setAnchorEl] = useState(null);
-const open = Boolean(anchorEl);
+	const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
+	const { allPlayers, kickPlayer, isHost, myPlayerId } = usePlayroom();
 
-const handleMenuClick = (event) => {
-  setAnchorEl(event.currentTarget);
-};
+	const [anchorEl, setAnchorEl] = useState(null);
+	const open = Boolean(anchorEl);
 
-const handleMenuClose = () => {
-  setAnchorEl(null);
-};
+	const handleMenuClick = (event) => {
+		setAnchorEl(event.currentTarget);
+	};
 
-const handleActionExport = () => {
-  handleMenuClose();
-  handleExport(); // Deine bestehende Export-Funktion
-};
+	const handleMenuClose = () => {
+		setAnchorEl(null);
+	};
 
-const handleActionToggleMarkers = () => {
-  handleMenuClose();
-  setShowMarkers(!showMarkers);
-};
+	const handleKickPlayer = (player) => {
+		if (window.confirm(`Möchtest du ${player.id} wirklich kicken?`)) {
+			player.kick(); // Playroom's kick method
+		}
+	};
 
-const handleActionClearAll = () => {
-  handleMenuClose();
-  if (window.confirm("Are you sure you want to delete all photos?")) {
-    setCollageImages([]);
-    positionsRef.current = {}; // Reset positions as well
-  }
-};
+	const handleActionExport = () => {
+		handleMenuClose();
+		handleExport(); // Deine bestehende Export-Funktion
+	};
 
-const handleExport = async () => {
-  if (!exportRef.current) return;
+	const handleActionToggleMarkers = () => {
+		handleMenuClose();
+		setShowMarkers(!showMarkers);
+	};
 
-  try {
-    const dataUrl = await htmlToImage.toPng(exportRef.current, {
-      // Whitelist-Logik:
-      filter: (node) => {
-        if (node === exportRef.current) return true;
+	const handleActionClearAll = () => {
+		handleMenuClose();
+		if (window.confirm("Are you sure you want to delete all photos?")) {
+			setCollageImages([]);
+			positionsRef.current = {}; // Reset positions as well
+		}
+	};
 
-        if (node.classList && node.classList.contains('nuiexport')) return true;
+	const handleExport = async () => {
+		if (!exportRef.current) return;
 
-        if (node.closest && node.closest('.nuiexport')) return true;
+		try {
+			const dataUrl = await htmlToImage.toPng(exportRef.current, {
+				// Whitelist-Logik:
+				filter: (node) => {
+					if (node === exportRef.current) return true;
 
-        return false;
-      },
-      backgroundColor: '#dbdbdb', // Damit der Hintergrund zwischen den Fotos gefüllt ist
-      pixelRatio: 3, // Für hohe Qualität
-    });
+					if (node.classList && node.classList.contains("nuiexport")) return true;
 
-    const link = document.createElement('a');
-    link.download = `collage-${Date.now()}.png`;
-    link.href = dataUrl;
-    link.click();
-  } catch (err) {
-    console.error('Export fehlgeschlagen:', err);
-  }
-};
+					if (node.closest && node.closest(".nuiexport")) return true;
+
+					return false;
+				},
+				backgroundColor: "#dbdbdb", // Damit der Hintergrund zwischen den Fotos gefüllt ist
+				pixelRatio: 3, // Für hohe Qualität
+			});
+
+			const link = document.createElement("a");
+			link.download = `collage-${Date.now()}.png`;
+			link.href = dataUrl;
+			link.click();
+		} catch (err) {
+			console.error("Export fehlgeschlagen:", err);
+		}
+	};
 
 	// Get player color dynamically from their current position
 	const getPlayerColor = useCallback(
@@ -313,7 +325,7 @@ const handleExport = async () => {
 
 	return (
 		<Box
-      ref={exportRef}
+			ref={exportRef}
 			sx={{
 				width: "100vw",
 				height: "100vh",
@@ -327,47 +339,57 @@ const handleExport = async () => {
 			}}
 		>
 			{/* Oben rechts: Das 3-Dot Menü */}
-<Box sx={{ position: "absolute", top: 20, right: 20, zIndex: 1000 }}>
-  <IconButton
-    onClick={handleMenuClick}
-    sx={{
-      color: "white",
-      bgcolor: "rgba(0,0,0,0.3)",
-      "&:hover": { bgcolor: "rgba(0,0,0,0.5)" },
-    }}
-  >
-    <MoreVertIcon />
-  </IconButton>
-  
-  <Menu
-    anchorEl={anchorEl}
-    open={open}
-    onClose={handleMenuClose}
-    anchorOrigin={{
-      vertical: 'bottom',
-      horizontal: 'right',
-    }}
-    transformOrigin={{
-      vertical: 'top',
-      horizontal: 'right',
-    }}
-  >
-    <MenuItem onClick={handleActionToggleMarkers}>
-      <QrCodeIcon sx={{ mr: 1, fontSize: '1.2rem' }} />
-      {showMarkers ? "Hide Markers" : "Show Markers"}
-    </MenuItem>
-    
-    <MenuItem onClick={handleActionExport}>
-      <DownloadIcon sx={{ mr: 1, fontSize: '1.2rem' }} />
-      Export Collage
-    </MenuItem>
+			<Box sx={{ position: "absolute", top: 20, right: 20, zIndex: 1000 }}>
+				<IconButton
+					onClick={handleMenuClick}
+					sx={{
+						color: "white",
+						bgcolor: "rgba(0,0,0,0.3)",
+						"&:hover": { bgcolor: "rgba(0,0,0,0.5)" },
+					}}
+				>
+					<MoreVertIcon />
+				</IconButton>
 
-    <MenuItem onClick={handleActionClearAll} sx={{ color: 'error.main' }}>
-      <DeleteSweepIcon sx={{ mr: 1, fontSize: '1.2rem' }} />
-      Clear all photos
-    </MenuItem>
-  </Menu>
-</Box>
+				<Menu
+					anchorEl={anchorEl}
+					open={open}
+					onClose={handleMenuClose}
+					anchorOrigin={{
+						vertical: "bottom",
+						horizontal: "right",
+					}}
+					transformOrigin={{
+						vertical: "top",
+						horizontal: "right",
+					}}
+				>
+					<MenuItem onClick={handleActionToggleMarkers}>
+						<QrCodeIcon sx={{ mr: 1, fontSize: "1.2rem" }} />
+						{showMarkers ? "Hide Markers" : "Show Markers"}
+					</MenuItem>
+
+					<MenuItem onClick={handleActionExport}>
+						<DownloadIcon sx={{ mr: 1, fontSize: "1.2rem" }} />
+						Export Collage
+					</MenuItem>
+
+					<MenuItem
+						onClick={() => {
+							handleMenuClose();
+							setIsPlayerModalOpen(true);
+						}}
+					>
+						<GroupIcon sx={{ mr: 1, fontSize: "1.2rem" }} />
+						Manage Users
+					</MenuItem>
+
+					<MenuItem onClick={handleActionClearAll} sx={{ color: "error.main" }}>
+						<DeleteSweepIcon sx={{ mr: 1, fontSize: "1.2rem" }} />
+						Clear all Photos
+					</MenuItem>
+				</Menu>
+			</Box>
 
 			{showMarkers && (
 				<Box sx={{ position: "absolute", inset: 0, bgcolor: "white", zIndex: 900 }}>
@@ -388,7 +410,10 @@ const handleExport = async () => {
 			)}
 
 			{/* Paper / Workspace */}
-			<Box sx={{ width: "100%", height: "100%", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1, pointerEvents: "none" }} className="nuiexport">
+			<Box
+				sx={{ width: "100%", height: "100%", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1, pointerEvents: "none" }}
+				className='nuiexport'
+			>
 				<Paper
 					elevation={0}
 					sx={{
@@ -428,7 +453,7 @@ const handleExport = async () => {
 				return (
 					<Box
 						key={image.id}
-            className="nuiexport"
+						className='nuiexport'
 						sx={{
 							position: "fixed", // FIXED positioning relative to viewport
 							width: "140px", // Smaller images to fit in margins
@@ -452,7 +477,7 @@ const handleExport = async () => {
 					>
 						<DraggablePhoto
 							id={image.id}
-              className="nuiexport"
+							className='nuiexport'
 							src={image.src}
 							initialPos={image.initialPosition}
 							baseRotation={image.initialStyles.baseRotation}
@@ -509,6 +534,56 @@ const handleExport = async () => {
 					/>
 				);
 			})}
+
+			<Dialog open={isPlayerModalOpen} onClose={() => setIsPlayerModalOpen(false)} fullWidth maxWidth='xs'>
+				<DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+					<GroupIcon /> Spieler verwalten
+				</DialogTitle>
+				<DialogContent dividers>
+					<List>
+						{/* 1. Korrektur: Direkt über allPlayers mappen, Object.values ist hier nicht nötig */}
+						{allPlayers.map((player) => {
+							const dotInfo = dots[player.id];
+							const posLabel = dotInfo?.position || "Keine Position";
+							const color = dotInfo ? DOT_INDICATOR_CONFIG[dotInfo.position]?.color : "#ccc";
+
+							return (
+								<ListItem
+									key={player.id}
+									secondaryAction={
+										/* Verhindert, dass man sich selbst kickt (optional aber empfohlen) */
+										player.id !== myPlayerId && (
+											<IconButton edge='end' color='error' onClick={() => handleKickPlayer(player)}>
+												<PersonRemoveIcon />
+											</IconButton>
+										)
+									}
+								>
+									<Avatar sx={{ bgcolor: color, mr: 2, border: "1px solid #ddd" }}>{player.getProfile()?.name?.charAt(0) || "P"}</Avatar>
+									<ListItemText
+										primary={
+											<Typography variant='body1' sx={{ fontWeight: "bold", color: color }}>
+												{posLabel.toUpperCase()}
+											</Typography>
+										}
+										secondary={
+											<Typography variant='caption' sx={{ color: "gray" }}>
+												ID: {player.id.substring(0, 8)}...
+											</Typography>
+										}
+									/>
+								</ListItem>
+							);
+						})}
+					</List>
+
+					{/* 2. Korrektur: Nutze playerCount statt getPlayers() Aufruf für die Leer-Anzeige */}
+					{allPlayers.length === 0 && <Typography sx={{ py: 2, textAlign: "center", color: "gray" }}>Keine Spieler im Raum.</Typography>}
+				</DialogContent>
+				<Box sx={{ p: 2, display: "flex", justifyContent: "flex-end" }}>
+					<Button onClick={() => setIsPlayerModalOpen(false)}>Schließen</Button>
+				</Box>
+			</Dialog>
 		</Box>
 	);
 }

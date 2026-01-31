@@ -15,6 +15,7 @@ let globalState = {
   stateSubscribers: new Set(),
   reservedMarkers: {},
   myPlayerId: null,
+  players: new Map()
 }
 
 function notifySubscribers() {
@@ -217,18 +218,26 @@ export function usePlayroom() {
           return "ok"
         })
 
-        let players = new Map()
+        RPC.register('kick-player-rpc', (data) => {
+  // Wenn meine ID die ist, die gekickt werden soll...
+  if (data.playerId === globalState.myPlayerId) {
+    console.log("Sie wurden vom Host entfernt.");
+    // Seite neu laden oder auf eine "Gekickt"-Seite leiten
+    window.location.reload(); 
+  }
+  return 'ok';
+});
 
         onPlayerJoin((player) => {
           console.log('[Playroom] Player joined:', player.id);
-          players.set(player.id, player)
-          globalState.playerCount = players.size
+          globalState.players.set(player.id, player)
+          globalState.playerCount = globalState.players.size
           notifySubscribers()
 
           player.onQuit(() => {
             console.log('[Playroom] Player left:', player.id);
-            players.delete(player.id)
-            globalState.playerCount = players.size
+            globalState.players.delete(player.id)
+            globalState.playerCount = globalState.players.size
 
             // Release any markers reserved by this player
             const markersToRelease = Object.entries(globalState.reservedMarkers)
@@ -431,5 +440,12 @@ export function usePlayroom() {
     releaseAllMyMarkers,
     getMarkerOwner,
     isMarkerAvailable,
+    allPlayers: Array.from(globalState.players.values()),
+    kickPlayer: (playerId) => {
+      if (globalState.isHost && globalState.rpc) {
+        globalState.rpc.call('kick-player-rpc', { playerId }, globalState.rpc.Mode.OTHERS);
+      }
+    },
+    myPlayerId: globalState.myPlayerId,
   }
 }
