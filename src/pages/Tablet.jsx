@@ -31,7 +31,8 @@ const markers = Object.entries(MARKER_POSITIONS).map(([id, position], index) => 
 });
 
 // Dots are 40px, positioned so 30% is hidden outside viewport (-12px offset)
-const DOT_INDICATOR_CONFIG = {
+// Exported for use in Phone UI to color elements by player position
+export const DOT_INDICATOR_CONFIG = {
 	"top-left": { color: "#FF5252", top: -12, left: -12, transform: "none" },
 	"top-center": { color: "#FF4081", top: -12, left: "50%", transform: "translateX(-50%)" },
 	"top-right": { color: "#E040FB", top: -12, right: -12, transform: "none" },
@@ -99,6 +100,13 @@ function Tablet() {
 	const [dots, setDots] = useState({});
 	const [collageImages, setCollageImages] = useState([]);
 	const positionsRef = useRef({});
+
+	// Get player color dynamically from their current position
+	const getPlayerColor = useCallback((playerId) => {
+		const playerDot = dots[playerId];
+		if (!playerDot) return null;
+		return DOT_INDICATOR_CONFIG[playerDot.position]?.color || null;
+	}, [dots]);
 
 	// Callback reference for DraggablePhoto
 	const handlePhotoUpdate = useCallback((id, newPos) => {
@@ -324,6 +332,7 @@ left: image.initialStyles.left,
 							animating={image.animating}
 							style={{ /* transform: posConfig.transform,  */zIndex: 1500 }}
 							onUpdate={handlePhotoUpdate}
+							playerColor={getPlayerColor(image.playerId)}
 							sx={{
 								width: "100%",
 								height: "auto",

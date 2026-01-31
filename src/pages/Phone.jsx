@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { usePlayroom } from "../hooks/usePlayroom";
 import { useAprilTag } from "../hooks/useAprilTag";
 import { MARKER_POSITIONS, POSITION_LABELS, DETECTION_CONFIG } from "../marker-config";
+import { DOT_INDICATOR_CONFIG } from "./Tablet";
 
 // Phone UI related
 import "./Phone.css";
@@ -12,9 +13,14 @@ import CameraGalleryScreen from "./CameraGalleryScreen";
 import { Box, Typography, Paper, Button, Fade } from "@mui/material";
 import CenterFocusWeakIcon from "@mui/icons-material/CenterFocusWeak";
 
-const accentColor = "#4da6ff";
-
+const DEFAULT_ACCENT_COLOR = "#4da6ff";
 const reservedColor = "#ff4444"; // Red for reserved markers
+
+// Get player color based on their confirmed position
+const getPlayerColor = (position) => {
+	if (!position) return DEFAULT_ACCENT_COLOR;
+	return DOT_INDICATOR_CONFIG[position]?.color || DEFAULT_ACCENT_COLOR;
+};
 
 function Phone() {
 	const {
@@ -43,6 +49,9 @@ function Phone() {
 	const [confirmStatus, setConfirmStatus] = useState(false);
 	const [debugDisplay, setDebugDisplay] = useState("");
 	const [userPosition, setUserPosition] = useState(null); // Store the confirmed position
+
+	// Dynamic accent color based on player's confirmed position
+	const accentColor = getPlayerColor(userPosition);
 
 	const videoRef = useRef(null);
 	const canvasRef = useRef(null);
@@ -676,7 +685,7 @@ function Phone() {
 					)}
 				</>
 			)}
-			{screen === "cameraGallery" && <CameraGalleryScreen key="cameraGallery" sendImage={sendImage} userPosition={userPosition} onGoBack={handleGoBack} />}
+			{screen === "cameraGallery" && <CameraGalleryScreen key="cameraGallery" sendImage={sendImage} userPosition={userPosition} onGoBack={handleGoBack} accentColor={accentColor} />}
 		</div>
 	);
 }

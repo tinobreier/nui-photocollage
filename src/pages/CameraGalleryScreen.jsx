@@ -13,7 +13,7 @@ import { sendImageToTablet, shouldTriggerSend, getSwipeTransform } from "../hook
 const SHUTTER_SOUND_DATA =
 	"data:audio/wav;base64,UklGRl4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToFAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CA/3+AgP9/gID/f4CAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAAICAgACAgIAAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CA/3+AwP9/gID/f4CAAICA";
 
-export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack }) {
+export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack, accentColor = "#4da6ff" }) {
 	const [mode, setMode] = useState("camera");
 	const [images, setImages] = useState([]);
 	const [selectedImage, setSelectedImage] = useState(null);
@@ -35,8 +35,6 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 	const shutterAudioRef = useRef(null);
 	const pinchRef = useRef({ initialDistance: 0, initialZoom: 1 });
 	const handleRef = useRef(null);
-
-	const accentColor = "#4da6ff";
 
 	/* ---------------- Audio Setup ---------------- */
 
@@ -708,7 +706,7 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack 
 					}}
 				>
 					<ToggleButton value='camera'>Camera</ToggleButton>
-					<ToggleButton value='gallery'>Gallery</ToggleButton>
+					<ToggleButton value='gallery'>Photos taken</ToggleButton>
 				</ToggleButtonGroup>
 			</Box>
 		</Box>
