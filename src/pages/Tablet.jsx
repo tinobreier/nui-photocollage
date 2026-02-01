@@ -468,7 +468,9 @@ function Tablet() {
 							"--land-rotation": `${image.initialStyles.rotation}deg`,
 							left: image.initialStyles.left,
 							top: image.initialStyles.top,
-							transform: "translate(-50%, -50%)",
+							transform: image.isAnimating
+								? "translate(-50%, -50%)"
+								: `translate(calc(-50% + ${image.initialStyles.offsetX}px), calc(-50% + ${image.initialStyles.offsetY}px)) rotate(${image.initialStyles.rotation}deg)`,
 							animation: image.isAnimating ? "fly-in-from-edge 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.1) both" : "none",
 							boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
 							// Hide photos when markers are shown (visual only)
