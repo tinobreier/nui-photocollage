@@ -2,7 +2,7 @@ import { useRef, useMemo, useLayoutEffect } from 'react';
 import { useSpring } from '@react-spring/web';
 import { useGesture } from '@use-gesture/react';
 
-export function useTransformGesture(initialValues = {}, { skipSyncUntil = 0 } = {}) {
+export function useTransformGesture(initialValues = {}, { skipSyncUntil = 0, onDragStart } = {}) {
   // Saves the current state (Updated during drag/pinch)
   const stateRef = useRef({
     x: initialValues.x ?? 0,
@@ -56,10 +56,16 @@ export function useTransformGesture(initialValues = {}, { skipSyncUntil = 0 } = 
   }), []);
 
   const bind = useGesture({
+    onDragStart: () => {
+      onDragStart?.();
+    },
     onDrag: ({ offset: [dx, dy] }) => {
       stateRef.current.x = dx;
       stateRef.current.y = dy;
       api.start({ x: dx, y: dy });
+    },
+    onPinchStart: () => {
+      onDragStart?.(); // Also trigger on pinch start
     },
     onPinch: ({ offset: [s, a] }) => {
       stateRef.current.scale = s;

@@ -122,6 +122,7 @@ function Tablet() {
 	const [showMarkers, setShowMarkers] = useState(false);
 	const [dots, setDots] = useState({});
 	const [collageImages, setCollageImages] = useState([]);
+	const [activePhotoId, setActivePhotoId] = useState(null); // Track last interacted photo
 	const positionsRef = useRef({});
 	const exportRef = useRef(null);
 
@@ -204,6 +205,11 @@ function Tablet() {
 	// Callback reference for DraggablePhoto
 	const handlePhotoUpdate = useCallback((id, newPos) => {
 		positionsRef.current[id] = newPos;
+	}, []);
+
+	// Bring photo to front immediately when interaction starts
+	const handlePhotoInteractionStart = useCallback((id) => {
+		setActivePhotoId(id);
 	}, []);
 
 	useEffect(() => {
@@ -326,12 +332,13 @@ function Tablet() {
 	return (
 		<Box
 			ref={exportRef}
+      className="customBackground"
 			sx={{
 				width: "100vw",
 				height: "100vh",
 				position: "relative",
-				bgcolor: "#5D4037",
-				backgroundImage: "radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 100%)",
+				// bgcolor: "#5D4037",
+				// backgroundImage: "radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 100%)",
 				overflow: "hidden",
 				display: "flex",
 				justifyContent: "center",
@@ -458,7 +465,7 @@ function Tablet() {
 							position: "fixed", // FIXED positioning relative to viewport
 							width: "140px", // Smaller images to fit in margins
 							height: "auto",
-							zIndex: 1500, // Above paper
+							zIndex: image.id === activePhotoId ? 1600 : 1500, // Active photo on top
 
 							// CSS Variables
 							"--start-x": startX,
@@ -484,9 +491,10 @@ function Tablet() {
 							initialPos={image.initialPosition}
 							baseRotation={image.initialStyles.baseRotation}
 							rotation={image.initialStyles.rotation}
-							offsetX={image.initialStyles.offsetX} // <-- NEU
+							offsetX={image.initialStyles.offsetX}
 							offsetY={image.initialStyles.offsetY}
 							onUpdate={handlePhotoUpdate}
+							onInteractionStart={handlePhotoInteractionStart}
 							playerColor={getPlayerColor(image.playerId)}
 						/>
 					</Box>

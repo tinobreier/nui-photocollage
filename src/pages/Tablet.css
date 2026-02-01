@@ -30,6 +30,18 @@ input, textarea {
   }
 }
 
+.customBackground {
+  /* Centered radial gradient - lighter in middle, darker at edges */
+  background: radial-gradient(
+    ellipse 70% 70% at 50% 50%,
+    #7D5A50 0%,
+    #6D4C41 30%,
+    #5D4037 55%,
+    #4E342E 75%,
+    #3E2723 100%
+  );
+}
+
 /* Tablet.css */
 
 /* @keyframes fly-in-from-edge {
