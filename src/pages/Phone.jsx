@@ -360,7 +360,7 @@ function Phone() {
 		const handleVisibilityChange = async () => {
 			if (document.hidden) {
 				// User has switched tabs or locked their phone - set dot to inactive
-				cancelMarker();
+				// cancelMarker();
 			} else {
 				// When the user comes back and we still have their marker
 				if (currentMarker && screen === "cameraGallery") {
