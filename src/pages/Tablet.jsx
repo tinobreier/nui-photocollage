@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { usePlayroom } from "../hooks/usePlayroom";
 import { Box, IconButton, Paper, Typography, darken } from "@mui/material";
 import { Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText, Button, Avatar } from "@mui/material";
-import { MARKER_POSITIONS } from "../marker-config";
-import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 import * as htmlToImage from "html-to-image";
+
+import { usePlayroom } from "../hooks/usePlayroom";
+import { MARKER_POSITIONS } from "../marker-config";
+import "./Tablet.css";
+
+import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -14,12 +17,9 @@ import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import GroupIcon from "@mui/icons-material/Group";
 
-// use gestures
 import { animated } from "@react-spring/web";
 import usePreventZoom from "../utils/usePreventZoom";
 import DraggablePhoto from "../components/DraggablePhoto";
-
-import "./Tablet.css";
 
 const markers = Object.entries(MARKER_POSITIONS).map(([id, position], index) => {
 	const MARKER_STYLES = [
@@ -40,8 +40,6 @@ const markers = Object.entries(MARKER_POSITIONS).map(([id, position], index) => 
 	};
 });
 
-// Dots are 40px, positioned so 30% is hidden outside viewport (-12px offset)
-// Exported for use in Phone UI to color elements by player position
 export const DOT_INDICATOR_CONFIG = {
 	"top-left": { color: "#4CAF50", top: -12, left: -12, transform: "none" },
 	"top-center": { color: "#E91E63", top: -12, left: "50%", transform: "translateX(-50%)" },
@@ -148,7 +146,7 @@ function Tablet() {
 
 	const handleActionExport = () => {
 		handleMenuClose();
-		handleExport(); // Deine bestehende Export-Funktion
+		handleExport();
 	};
 
 	const handleActionToggleMarkers = () => {
@@ -160,7 +158,7 @@ function Tablet() {
 		handleMenuClose();
 		if (window.confirm("Are you sure you want to delete all photos?")) {
 			setCollageImages([]);
-			positionsRef.current = {}; // Reset positions as well
+			positionsRef.current = {};
 		}
 	};
 
@@ -179,8 +177,8 @@ function Tablet() {
 
 					return false;
 				},
-				backgroundColor: "#dbdbdb", // Damit der Hintergrund zwischen den Fotos gefüllt ist
-				pixelRatio: 3, // Für hohe Qualität
+				backgroundColor: "#dbdbdb",
+				pixelRatio: 3, // = High quality
 			});
 
 			const link = document.createElement("a");
@@ -256,16 +254,12 @@ function Tablet() {
 				const id = crypto.randomUUID();
 				const posConfig = IMAGE_POSITION_CONFIG[data.position] || { top: "50%", left: "50%" };
 
-				// Stabile Zufallswerte generieren
 				const hash = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
 				const stableOffsetX = (hash % 30) - 15;
 				const stableOffsetY = ((hash * 7) % 30) - 15;
 				const stableRotation = (hash % 20) - 10;
-				// Base rotation for player's seating position (visual-only, doesn't affect drag)
 				const baseRotation = POSITION_BASE_ROTATION[data.position] || 0;
-				// Small random rotation variation (added to pinch rotation)
 
-				// Stabile initialPosition - wird einmal erstellt und im Image-Objekt gespeichert
 				const initialPosition = {
 					x: stableOffsetX,
 					y: stableOffsetY,
@@ -278,27 +272,26 @@ function Tablet() {
 					id: id,
 					src: data.imageData,
 					position: data.position,
-					initialPosition, // Stabile Referenz im Objekt
+					initialPosition,
 					initialStyles: {
 						left: posConfig.left,
 						top: posConfig.top,
-						baseRotation: baseRotation, // Visual-only rotation for seating position
-						rotation: stableRotation, // Random variation for pinch
+						baseRotation: baseRotation,
+						rotation: stableRotation,
 						offsetX: stableOffsetX,
 						offsetY: stableOffsetY,
 					},
 					playerId: data.playerId,
 					timestamp: data.timestamp,
-					isAnimating: true, // Animation-Flag - wird nach Ablauf deaktiviert
+					isAnimating: true, // Animation-Flag
 				};
 
 				setCollageImages((prev) => [...prev, newImage]);
-				positionsRef.current[id] = initialPosition; // Gleiche Referenz!
+				positionsRef.current[id] = initialPosition;
 
-				// Animation nach Ablauf entfernen, damit sie bei Re-Renders nicht erneut angewendet wird
 				setTimeout(() => {
 					setCollageImages((prev) => prev.map((img) => (img.id === id ? { ...img, isAnimating: false } : img)));
-				}, 1200); // Etwas länger als Animation (800ms) für Sicherheitspuffer
+				}, 1200); //
 			}
 
 			if (data.type === "player-left") {
@@ -332,7 +325,7 @@ function Tablet() {
 	return (
 		<Box
 			ref={exportRef}
-      className="customBackground"
+			className='grainy-gradient-bg'
 			sx={{
 				width: "100vw",
 				height: "100vh",
@@ -345,7 +338,7 @@ function Tablet() {
 				alignItems: "center",
 			}}
 		>
-			{/* Oben rechts: Das 3-Dot Menü */}
+			{/* 3-dot-menu */}
 			<Box sx={{ position: "absolute", top: 20, right: 20, zIndex: 1000 }}>
 				<IconButton
 					onClick={handleMenuClick}
@@ -462,8 +455,8 @@ function Tablet() {
 						key={image.id}
 						className='nuiexport'
 						sx={{
-							position: "fixed", // FIXED positioning relative to viewport
-							width: "140px", // Smaller images to fit in margins
+							position: "fixed",
+							width: "140px",
 							height: "auto",
 							zIndex: image.id === activePhotoId ? 1600 : 1500, // Active photo on top
 
@@ -528,7 +521,7 @@ function Tablet() {
 							right: config.right,
 							bottom: config.bottom,
 
-							// CSS variables for animation
+							// CSS variables
 							"--current-transform": config.transform || "none",
 							"--fly-x": flyX,
 							"--fly-y": flyY,
@@ -551,7 +544,6 @@ function Tablet() {
 				</DialogTitle>
 				<DialogContent dividers>
 					<List>
-						{/* 1. Korrektur: Direkt über allPlayers mappen, Object.values ist hier nicht nötig */}
 						{allPlayers.map((player) => {
 							const dotInfo = dots[player.id];
 							const posLabel = dotInfo?.position || "Keine Position";
@@ -561,7 +553,6 @@ function Tablet() {
 								<ListItem
 									key={player.id}
 									secondaryAction={
-										/* Verhindert, dass man sich selbst kickt (optional aber empfohlen) */
 										player.id !== myPlayerId && (
 											<IconButton edge='end' color='error' onClick={() => handleKickPlayer(player)}>
 												<PersonRemoveIcon />
@@ -587,7 +578,6 @@ function Tablet() {
 						})}
 					</List>
 
-					{/* 2. Korrektur: Nutze playerCount statt getPlayers() Aufruf für die Leer-Anzeige */}
 					{allPlayers.length === 0 && <Typography sx={{ py: 2, textAlign: "center", color: "gray" }}>Keine Spieler im Raum.</Typography>}
 				</DialogContent>
 				<Box sx={{ p: 2, display: "flex", justifyContent: "flex-end" }}>

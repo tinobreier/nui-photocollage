@@ -1,15 +1,14 @@
-// General imports
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Box, Button, ToggleButton, ToggleButtonGroup, IconButton, Typography, darken, alpha } from "@mui/material";
+
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import CameraAltIconEnhanced from "@mui/icons-material/CameraEnhance";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 
-// Image transfer utilities
 import { sendImageToTablet, shouldTriggerSend, getSwipeTransform } from "../hooks/imageTransfer";
 
-// Colors that need dark text (bottom-center and bottom-left are light colors)
+// (Deprecated for now) Colors that need dark text (bottom-center and bottom-left are light colors)
 const LIGHT_ACCENT_COLORS = ["#14e4e4", "#40C4FF"];
 
 // Shutter sound as base64 data URI (short click sound)
@@ -177,7 +176,7 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 
 	/* ---------------- Handle Drag Gesture ---------------- */
 
-	const handleDragThreshold = 50; // pixels to trigger state change
+	const handleDragThreshold = 50;
 
 	const onHandleTouchStart = useCallback((e) => {
 		const touch = e.touches[0];
@@ -201,10 +200,8 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 		const dragDelta = handleDragCurrentY - handleDragStartY;
 
 		if (galleryHeight === "collapsed" && dragDelta < -handleDragThreshold) {
-			// Swiped up while collapsed -> expand
 			setGalleryHeight("expanded");
 		} else if (galleryHeight === "expanded" && dragDelta > handleDragThreshold) {
-			// Swiped down while expanded -> collapse
 			setGalleryHeight("collapsed");
 		}
 
@@ -215,7 +212,7 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 
 	/* ---------------- Image Swipe to Send ---------------- */
 
-	// This makes mouse and touch work simultaneously
+	// Makes mouse and touch work simultaneously
 	const getY = (e) => (e.touches ? e.touches[0].clientY : e.clientY);
 
 	const onImageSwipeStart = useCallback(
@@ -250,7 +247,6 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 			return;
 		}
 
-		// Use utility function to check if swipe threshold is met
 		const shouldSend = shouldTriggerSend(swipeStartY, swipeCurrentY);
 
 		if (shouldSend) {
@@ -359,7 +355,6 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 									opacity: 1,
 								},
 								"100%": {
-									/* Zielt auf die Position des rechten Tabs (Photos taken) */
 									transform: "translate(20vw, 40vh) scale(0.1)",
 									opacity: 0,
 								},
@@ -482,7 +477,6 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 								// Mouse Events (for testing)
 								onMouseDown={onImageSwipeStart}
 								onMouseMove={(e) => {
-									// The movement is only calculated when we are in swiping mode
 									if (isSwiping) onImageSwipeMove(e);
 								}}
 								onMouseUp={onImageSwipeEnd}
@@ -723,11 +717,10 @@ export default function CameraGalleryScreen({ sendImage, userPosition, onGoBack,
 					fullWidth
 					sx={{
 						bgcolor: "#222",
-						borderRadius: "50px", // Outer frame as a pill
+						borderRadius: "50px",
 						// padding: "2px",       // Creates the spacing for the "inlay" effect (optional, can be removed later if we want)
 						border: "1px solid #444",
 						"& .MuiToggleButtonGroup-grouped": {
-							// Forces rounding on both sides for each button
 							borderRadius: "50px !important",
 							border: "none !important",
 						},

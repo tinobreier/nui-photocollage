@@ -1,25 +1,21 @@
-// General imports
 import { useState, useEffect, useRef, useCallback } from "react";
 
-// Marker detection related
 import { usePlayroom } from "../hooks/usePlayroom";
 import { useAprilTag } from "../hooks/useAprilTag";
 import { MARKER_POSITIONS, POSITION_LABELS, DETECTION_CONFIG } from "../marker-config";
 import { DOT_INDICATOR_CONFIG } from "./Tablet";
 
-// Phone UI related
 import "./Phone.css";
 import CameraGalleryScreen from "./CameraGalleryScreen";
 import { Box, Typography, Paper, Button, Fade } from "@mui/material";
 import CenterFocusWeakIcon from "@mui/icons-material/CenterFocusWeak";
 
 const DEFAULT_ACCENT_COLOR = "#4da6ff";
-const reservedColor = "#ff4444"; // Red for reserved markers
+const reservedColor = "#ff4444";
 
 // Colors that need dark text (bottom-center and bottom-left are light colors)
 const LIGHT_ACCENT_COLORS = ["#40C4FF", "#14e4e4"];
 
-// Get player color based on their confirmed position
 const getPlayerColor = (position) => {
 	if (!position) return DEFAULT_ACCENT_COLOR;
 	return DOT_INDICATOR_CONFIG[position]?.color || DEFAULT_ACCENT_COLOR;
@@ -58,14 +54,14 @@ function Phone() {
 
 	// Preview color: temporarily shows the color of the currently scanned marker (if available)
 	const getPreviewColor = () => {
-		// If marker is reserved by someone else, don't preview - use accent color
+		// If marker is reserved by someone else, don't preview -> use accent color
 		if (currentMarker?.isReservedByOther) return accentColor;
 		// If we have a valid marker, show its position color as preview
 		if (currentMarker) {
 			const position = MARKER_POSITIONS[currentMarker.id];
 			return DOT_INDICATOR_CONFIG[position]?.color || accentColor;
 		}
-		// No marker detected - use accent color (confirmed position or default)
+		// No marker detected -> use accent color (confirmed position or default)
 		return accentColor;
 	};
 	const previewColor = getPreviewColor();
@@ -77,7 +73,6 @@ function Phone() {
 	const frameCountRef = useRef(0);
 	const lastFpsUpdateRef = useRef(0);
 
-	// Start camera
 	const startCamera = useCallback(async () => {
 		setLoadingMessage("Starting camera...");
 
@@ -94,11 +89,9 @@ function Phone() {
 				const video = videoRef.current;
 				console.log("[Camera] Setting up video element...");
 
-				// (Required for iOS)
 				video.playsInline = true;
 				video.muted = true;
 
-				// Set up the promise (before setting srcObject)
 				const metadataPromise = new Promise((resolve) => {
 					const handler = () => {
 						console.log("[Camera] Metadata loaded, dimensions:", video.videoWidth, "x", video.videoHeight);
@@ -146,7 +139,6 @@ function Phone() {
 		return grayscale;
 	}, []);
 
-	// Score a marker
 	const scoreMarker = useCallback((detection, canvasWidth, canvasHeight) => {
 		let score = 1.0;
 
@@ -254,7 +246,7 @@ function Phone() {
 			scored.sort((a, b) => b.score - a.score);
 			const best = scored[0];
 
-			// Real video dimensions (e.g., 1280x720)
+			// Real video dimensions
 			const vW = video.videoWidth;
 			const vH = video.videoHeight;
 
@@ -280,18 +272,6 @@ function Phone() {
 				factorX: vW / currentCanvasWidth,
 				factorY: vH / currentCanvasHeight,
 			};
-
-			// DEBUG ONLY (CAN BE USED IF NEEDED)
-			// if (frameCountRef.current === 0) {
-			//   const videoRect = video.getBoundingClientRect();
-			//   const overlayRect = overlay.getBoundingClientRect();
-			//   setDebugDisplay(
-			//     `vid: ${vW}x${vH} | vidRect: ${videoRect.width.toFixed(0)}x${videoRect.height.toFixed(0)}\n` +
-			//     `overlay: ${oW}x${oH} | ovRect: ${overlayRect.width.toFixed(0)}x${overlayRect.height.toFixed(0)}\n` +
-			//     `vidRect.top: ${videoRect.top.toFixed(0)} | ovRect.top: ${overlayRect.top.toFixed(0)}\n` +
-			//     `scale:${scanScale.toFixed(3)} | offX:${offsetX.toFixed(1)} offY:${offsetY.toFixed(1)}`
-			//   );
-			// }
 
 			// Check if this marker is reserved by someone else
 			const isReservedByOther = !isMarkerAvailable(best.id);
@@ -325,7 +305,6 @@ function Phone() {
 		}
 	}, [detect, convertToGrayscale, scoreMarker, drawBorderAroundMarker]);
 
-	// Detection loop; only starts when camera is ready (isLoading === false)
 	useEffect(() => {
 		if (isLoading) {
 			console.log("[DetectionLoop] Waiting for loading to complete...");
@@ -360,7 +339,6 @@ function Phone() {
 		const handleVisibilityChange = async () => {
 			if (document.hidden) {
 				// User has switched tabs or locked their phone - set dot to inactive
-				// cancelMarker();
 			} else {
 				// When the user comes back and we still have their marker
 				if (currentMarker && screen === "cameraGallery") {
@@ -390,51 +368,50 @@ function Phone() {
 
 	// Initialize; only run once on mount, after DOM is ready
 	useEffect(() => {
-			let mounted = true;
+		let mounted = true;
 
-			async function init() {
-				// Wait for video element to be available in DOM
-				let attempts = 0;
-				const maxAttempts = 50; // 5 seconds max
-				while (!videoRef.current && attempts < maxAttempts) {
-					await new Promise((resolve) => setTimeout(resolve, 100));
-					attempts++;
-				}
+		async function init() {
+			// Wait for video element to be available in DOM
+			let attempts = 0;
+			const maxAttempts = 50; // 5 seconds max
+			while (!videoRef.current && attempts < maxAttempts) {
+				await new Promise((resolve) => setTimeout(resolve, 100));
+				attempts++;
+			}
 
-				if (!mounted || !videoRef.current) {
-					console.log("[Init] Aborted - component unmounted or video not ready after", attempts, "attempts");
-					return;
-				}
-				console.log("[Init] Video element ready after", attempts, "attempts");
+			if (!mounted || !videoRef.current) {
+				console.log("[Init] Aborted - component unmounted or video not ready after", attempts, "attempts");
+				return;
+			}
+			console.log("[Init] Video element ready after", attempts, "attempts");
 
-				try {
-					console.log("Starting initialization...");
-					// 1. Start camera first
-					await startCamera();
-					if (!mounted) return;
-					console.log("Camera ready");
+			try {
+				console.log("Starting initialization...");
+				// 1. Start camera first
+				await startCamera();
+				if (!mounted) return;
+				console.log("Camera ready");
 
-					// 2. Brief wait in case Playroom/Detector need more time
-					setLoadingMessage("Synchronizing...");
+				// 2. Brief wait in case Playroom/Detector need more time
+				setLoadingMessage("Synchronizing...");
 
+				setIsLoading(false);
+				console.log("Loading complete");
+			} catch (err) {
+				console.error("Init Error:", err);
+				if (mounted) {
+					setError(err.message);
 					setIsLoading(false);
-					console.log("Loading complete");
-				} catch (err) {
-					console.error("Init Fehler:", err);
-					if (mounted) {
-						setError(err.message);
-						setIsLoading(false);
-					}
 				}
 			}
-			init();
+		}
+		init();
 
-			return () => {
-				mounted = false;
-			};
-		}, [screen]); // Empty deps = means run only once on mount
+		return () => {
+			mounted = false;
+		};
+	}, [screen]);
 
-	// Update overlay size
 	useEffect(() => {
 		const updateOverlaySize = () => {
 			const video = videoRef.current;
@@ -457,7 +434,6 @@ function Phone() {
 		};
 	}, [isLoading, screen]);
 
-	// Handle confirm (async to wait for RPC response)
 	const handleConfirm = async () => {
 		console.log("[Phone] handleConfirm() called, currentMarker:", currentMarker);
 
@@ -466,8 +442,8 @@ function Phone() {
 			return;
 		}
 
-    await releaseAllMyMarkers(); 
-    cancelMarker();
+		await releaseAllMyMarkers();
+		cancelMarker();
 
 		console.log("[Phone] Attempting to reserve marker", currentMarker.id);
 
