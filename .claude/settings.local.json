@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(npm create:*)",
-      "Bash(git checkout:*)",
-      "WebFetch(domain:docs.joinplayroom.com)"
-    ]
-  }
-}
